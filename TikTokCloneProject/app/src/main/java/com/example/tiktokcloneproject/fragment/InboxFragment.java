@@ -72,8 +72,10 @@ public class InboxFragment extends Fragment {
                         String userId = dataSnapshot.getKey();
                         if (userId != null) {
                             usersList.add(userId);
-                            // Lấy timestamp để sắp xếp người nhắn tin mới nhất lên đầu
-                            Long ts = dataSnapshot.child("lastTimestamp").getValue(Long.class);
+                            Long ts = dataSnapshot.child("timestamp").getValue(Long.class);
+                            if (ts == null) {
+                                ts = dataSnapshot.child("lastTimestamp").getValue(Long.class);
+                            }
                             userTimestamps.put(userId, ts != null ? ts : 0L);
                         }
                     }
@@ -103,16 +105,23 @@ public class InboxFragment extends Fragment {
         final int[] processedCount = {0};
 
         for (String id : usersList) {
+            if ("system_admin".equals(id)) {
+                User systemUser = new User();
+                systemUser.setUserId("system_admin");
+                systemUser.setUsername("Hệ thống TopTop");
+                systemUser.setAvatarUrl("");
+                tempUsers.add(systemUser);
+                processedCount[0]++;
+                if (processedCount[0] == usersList.size()) sortAndDisplay(tempUsers);
+                continue;
+            }
+
             db.collection("profiles").document(id).get().addOnSuccessListener(documentSnapshot -> {
                 if (documentSnapshot.exists()) {
-                    // GIẢI PHÁP CHỐNG CRASH: Lấy thủ công từng trường, tránh dùng toObject(User.class)
                     User user = new User();
                     user.setUserId(documentSnapshot.getId());
                     user.setUsername(documentSnapshot.getString("username"));
-                    
-                    String avatar = documentSnapshot.getString("avatarUrl");
-                    user.setAvatarUrl(avatar);
-                    
+                    user.setAvatarUrl(documentSnapshot.getString("avatarUrl"));
                     tempUsers.add(user);
                 }
                 
@@ -128,7 +137,6 @@ public class InboxFragment extends Fragment {
     }
 
     private void sortAndDisplay(List<User> users) {
-        // Sắp xếp: Ai vừa nhắn tin xong (timestamp lớn nhất) sẽ hiện lên đầu
         Collections.sort(users, (u1, u2) -> {
             Long t1 = userTimestamps.get(u1.getUserId());
             Long t2 = userTimestamps.get(u2.getUserId());

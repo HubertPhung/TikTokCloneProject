@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,16 +14,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.activity.CommentActivity;
 import com.example.tiktokcloneproject.activity.ProfileActivity;
+import com.example.tiktokcloneproject.helper.FirebaseHelper;
 import com.example.tiktokcloneproject.helper.GlobalVariable;
 import com.example.tiktokcloneproject.helper.LegacyHashtagFixer;
 import com.example.tiktokcloneproject.helper.OnSwipeTouchListener;
 import com.example.tiktokcloneproject.helper.RecommendationHelper;
+import com.example.tiktokcloneproject.model.ChatMessage;
+import com.example.tiktokcloneproject.model.Report;
 import com.example.tiktokcloneproject.model.Video;
 import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.ExoPlayer;
@@ -34,11 +39,15 @@ import com.google.android.exoplayer2.ui.StyledPlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -113,7 +122,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public class VideoViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         StyledPlayerView videoView;
         ExoPlayer exoPlayer;
-        ImageView imvAvatar, imvLike, imvComment, imvShare;
+        ImageView imvAvatar, imvLike, imvComment, imvShare, imvMore;
         TextView tvComment, tvFavorites, tvTitle, txvDescription, tvHashtags;
         ProgressBar pbLoading;
         String authorId, videoId;
@@ -132,6 +141,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             imvLike = itemView.findViewById(R.id.imvLike);
             imvComment = itemView.findViewById(R.id.imvComment);
             imvShare = itemView.findViewById(R.id.imvShare);
+            imvMore = itemView.findViewById(R.id.imvMore);
             pbLoading = itemView.findViewById(R.id.pbLoading);
 
             videoView.setOnClickListener(this);
@@ -139,6 +149,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             imvLike.setOnClickListener(this);
             imvComment.setOnClickListener(this);
             imvShare.setOnClickListener(this);
+            imvMore.setOnClickListener(this);
 
             videoView.setOnTouchListener(new OnSwipeTouchListener(itemView.getContext()) {
                 @Override public void onSwipeLeft() { moveToProfile(authorId); }
@@ -292,7 +303,95 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 moveToProfile(authorId);
             } else if (id == R.id.imvShare) {
                 shareDemo();
+            } else if (id == R.id.imvMore) {
+                showMoreOptions();
             }
+        }
+
+        private void showMoreOptions() {
+            String[] options = {"Báo cáo video này", "Lưu video", "Không quan tâm"};
+            new AlertDialog.Builder(context)
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            showReportDialog();
+                        } else {
+                            Toast.makeText(context, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
+                        }
+                    }).show();
+        }
+
+        private void showReportDialog() {
+            String[] reasons = {"Nội dung của tôi bị đăng lại không cho phép", "Nội dung nhạy cảm", "Spam", "Quấy rối"};
+            new AlertDialog.Builder(context)
+                    .setTitle("Lý do báo cáo")
+                    .setItems(reasons, (dialog, which) -> {
+                        submitReport(reasons[which]);
+                    }).show();
+        }
+
+        private void submitReport(String reason) {
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user == null) {
+                Toast.makeText(context, "Vui lòng đăng nhập để báo cáo", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (authorId == null || authorId.isEmpty()) {
+                Toast.makeText(context, "Không xác định được chủ video", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String reportId = UUID.randomUUID().toString();
+            String videoTitle = currentVideo.getDescription() != null ? currentVideo.getDescription() : "Video " + videoId;
+            Report report = new Report(reportId, user.getUid(), videoId, "video", reason, videoTitle);
+            
+            FirebaseFirestore.getInstance().collection("reports").document(reportId)
+                    .set(report.toMap())
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(context, "Báo cáo đã được gửi!", Toast.LENGTH_SHORT).show();
+                        sendAutomatedSystemMessage(authorId, videoTitle, reportId);
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(context, "Lỗi gửi báo cáo: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+        }
+
+        private void sendAutomatedSystemMessage(String targetUserId, String videoTitle, String reportId) {
+            String systemId = "system_admin";
+            String messageText = "Video \"" + videoTitle + "\" của bạn đã bị báo cáo. Bạn có thể nhấn vào đây để khiếu nại. [APPEAL:" + reportId + "]";
+            
+            DatabaseReference ref = FirebaseHelper.getDatabase().getReference();
+            long timestamp = System.currentTimeMillis();
+            
+            // Đảm bảo tạo roomId nhất quán
+            String roomId = (systemId.compareTo(targetUserId) < 0) ? systemId + "_" + targetUserId : targetUserId + "_" + systemId;
+
+            String msgKey = ref.child("Chats").child(roomId).push().getKey();
+            if (msgKey == null) return;
+
+            ChatMessage chatMessage = new ChatMessage(systemId, targetUserId, messageText, timestamp, "text");
+            
+            Map<String, Object> updates = new HashMap<>();
+            // 1. Lưu tin nhắn vào cuộc hội thoại giữa system_admin và người dùng
+            updates.put("/Chats/" + roomId + "/" + msgKey, chatMessage);
+
+            // 2. Cập nhật danh sách ChatList cho system_admin (để admin thấy)
+            Map<String, Object> chatListDataAdmin = new HashMap<>();
+            chatListDataAdmin.put("id", targetUserId);
+            chatListDataAdmin.put("lastMessage", "Thông báo báo cáo video");
+            chatListDataAdmin.put("timestamp", timestamp);
+            updates.put("/ChatList/" + systemId + "/" + targetUserId, chatListDataAdmin);
+
+            // 3. Cập nhật danh sách ChatList cho người dùng (để họ thấy tin nhắn trong Inbox)
+            Map<String, Object> chatListDataUser = new HashMap<>();
+            chatListDataUser.put("id", systemId);
+            chatListDataUser.put("lastMessage", "Thông báo hệ thống về video của bạn");
+            chatListDataUser.put("timestamp", timestamp);
+            updates.put("/ChatList/" + targetUserId + "/" + systemId, chatListDataUser);
+
+            ref.updateChildren(updates).addOnSuccessListener(aVoid -> {
+                Log.d("VideoAdapter", "Đã gửi tin nhắn hệ thống tới: " + targetUserId);
+            }).addOnFailureListener(e -> {
+                Log.e("VideoAdapter", "Lỗi gửi tin nhắn hệ thống: " + e.getMessage());
+            });
         }
 
         private void toggleLikeLocal() {

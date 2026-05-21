@@ -1,18 +1,26 @@
 package com.example.tiktokcloneproject.adapters;
 
 import android.content.Context;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.model.ChatMessage;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.List;
 
@@ -31,7 +39,6 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         this.mChat = mChat;
     }
 
-    // Thêm constructor để nhận URL ảnh
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
@@ -51,9 +58,14 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ChatMessage chat = mChat.get(position);
-        holder.show_message.setText(chat.getMessage());
+        String message = chat.getMessage();
 
-        // Hiển thị ảnh đại diện cho tin nhắn bên trái (của người kia)
+        if (message.contains("[APPEAL:") && message.endsWith("]")) {
+            setupAppealMessage(holder.show_message, message);
+        } else {
+            holder.show_message.setText(message);
+        }
+
         if (getItemViewType(position) == MSG_TYPE_LEFT && holder.profile_image != null) {
             if (imageUrl != null && !imageUrl.isEmpty()) {
                 Glide.with(mContext).load(imageUrl).placeholder(R.drawable.default_avatar).into(holder.profile_image);
@@ -61,6 +73,53 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
                 holder.profile_image.setImageResource(R.drawable.default_avatar);
             }
         }
+    }
+
+    private void setupAppealMessage(TextView textView, String fullMessage) {
+        int startIndex = fullMessage.indexOf("nhấn vào đây");
+        if (startIndex == -1) {
+            textView.setText(fullMessage);
+            return;
+        }
+        
+        int endIndex = startIndex + "nhấn vào đây".length();
+        SpannableString ss = new SpannableString(fullMessage.substring(0, fullMessage.indexOf(" [APPEAL:")));
+        
+        ClickableSpan clickableSpan = new ClickableSpan() {
+            @Override
+            public void onClick(@NonNull View widget) {
+                String reportId = fullMessage.substring(fullMessage.indexOf(":") + 1, fullMessage.length() - 1);
+                showAppealDialog(reportId);
+            }
+        };
+
+        ss.setSpan(clickableSpan, startIndex, endIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        textView.setText(ss);
+        textView.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    private void showAppealDialog(String reportId) {
+        EditText etAppeal = new EditText(mContext);
+        etAppeal.setHint("Nhập nội dung phản ánh của bạn...");
+        
+        new AlertDialog.Builder(mContext)
+                .setTitle("Phản ánh báo cáo")
+                .setView(etAppeal)
+                .setPositiveButton("Gửi", (dialog, which) -> {
+                    String content = etAppeal.getText().toString().trim();
+                    if (!content.isEmpty()) {
+                        submitAppeal(reportId, content);
+                    }
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    private void submitAppeal(String reportId, String content) {
+        FirebaseFirestore.getInstance().collection("reports").document(reportId)
+                .update("appeal", content)
+                .addOnSuccessListener(aVoid -> Toast.makeText(mContext, "Đã gửi phản ánh thành công!", Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e -> Toast.makeText(mContext, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show());
     }
 
     @Override

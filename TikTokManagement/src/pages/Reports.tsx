@@ -41,6 +41,7 @@ export function Reports() {
           targetId: d.targetId || '',
           reason: d.reason || '',
           details: d.details || '',
+          appeal: d.appeal || '',
           status: d.status || 'pending',
           createdAt: d.createdAt?.toMillis?.() || d.createdAt || Date.now(),
           handledBy: d.handledBy || '',
@@ -193,6 +194,7 @@ export function Reports() {
                 <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Mục tiêu</th>
                 <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Người báo cáo</th>
                 <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Thời gian</th>
+                <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Kháng cáo</th>
                 <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold">Trạng thái</th>
                 <th className="py-3 px-6 font-label text-xs text-on-surface-variant uppercase tracking-wider font-semibold text-right">Hành động</th>
               </tr>
@@ -200,14 +202,14 @@ export function Reports() {
             <tbody className="divide-y divide-outline-variant/10">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-on-surface-variant">
+                  <td colSpan={8} className="py-8 text-center text-on-surface-variant">
                     <RefreshCw className="w-5 h-5 animate-spin inline-block mr-2" />
                     Đang tải báo cáo...
                   </td>
                 </tr>
               ) : filteredReports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-on-surface-variant">Không tìm thấy báo cáo nào.</td>
+                  <td colSpan={8} className="py-8 text-center text-on-surface-variant">Không tìm thấy báo cáo nào.</td>
                 </tr>
               ) : filteredReports.map((report) => {
                 const TargetIcon = getTargetIcon(report.targetType);
@@ -233,6 +235,16 @@ export function Reports() {
                     <td className="py-4 px-6 font-label text-sm text-on-surface-variant font-mono">{report.targetId}</td>
                     <td className="py-4 px-6 font-label text-sm text-on-surface-variant font-mono">{report.reporterId}</td>
                     <td className="py-4 px-6 font-label text-sm text-on-surface-variant">{formatTimeAgo(report.createdAt)}</td>
+                      <td className="py-4 px-6">
+                    {report.appeal ? (
+                    <div className="bg-primary/10 border border-primary/20 rounded p-2">
+                    <p className="text-xs text-primary font-bold mb-1 uppercase">Người dùng phản hồi:</p>
+                    <p className="text-sm text-on-surface italic italic">"{report.appeal}"</p>
+                    </div>
+                    ) : (
+                    <span className="text-on-surface-variant/40 text-xs italic">Chưa có phản ánh</span>
+                                        )}
+                    </td>
                     <td className="py-4 px-6">
                       {report.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 text-tertiary-container font-label text-xs border border-tertiary/30">

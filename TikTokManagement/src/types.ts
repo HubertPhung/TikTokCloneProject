@@ -55,6 +55,7 @@ export interface Report {
   targetId: string;
   reason: string;
   details: string;
+  appeal?: string; // Phản hồi từ người dùng sau khi bị xử lý
   status: ReportStatus;
   createdAt: number;
   handledBy?: string;
