@@ -1,13 +1,18 @@
 package com.example.tiktokcloneproject.adapters;
 
-import android.annotation.SuppressLint;
+import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -23,7 +28,6 @@ import com.example.tiktokcloneproject.activity.CommentActivity;
 import com.example.tiktokcloneproject.activity.ProfileActivity;
 import com.example.tiktokcloneproject.helper.FirebaseHelper;
 import com.example.tiktokcloneproject.helper.GlobalVariable;
-import com.example.tiktokcloneproject.helper.LegacyHashtagFixer;
 import com.example.tiktokcloneproject.helper.OnSwipeTouchListener;
 import com.example.tiktokcloneproject.helper.RecommendationHelper;
 import com.example.tiktokcloneproject.model.ChatMessage;
@@ -43,10 +47,13 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,8 +62,9 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     private List<Video> videos;
     private Context context;
     private int currentPosition = 0;
-    private final Map<Integer, VideoViewHolder> activeHolders = new HashMap<>();
+    private final Set<VideoViewHolder> activeHolders = new HashSet<>();
     private FirebaseUser mUser;
+    private static boolean isMuted = false;
 
     public VideoAdapter(Context context, List<Video> videos) {
         this.context = context;
@@ -79,14 +87,23 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     }
 
     @Override
+    public void onBindViewHolder(@NonNull VideoViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty()) {
+            holder.currentVideo = videos.get(position);
+        } else {
+            super.onBindViewHolder(holder, position, payloads);
+        }
+    }
+
+    @Override
     public void onViewAttachedToWindow(@NonNull VideoViewHolder holder) {
-        activeHolders.put(holder.getBindingAdapterPosition(), holder);
+        activeHolders.add(holder);
         if (holder.getBindingAdapterPosition() == currentPosition) holder.playVideo();
     }
 
     @Override
     public void onViewDetachedFromWindow(@NonNull VideoViewHolder holder) {
-        activeHolders.remove(holder.getBindingAdapterPosition());
+        activeHolders.remove(holder);
         holder.pauseVideo();
     }
 
@@ -104,13 +121,15 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public int getCurrentPosition() { return currentPosition; }
     
     public void pauseVideo(int position) {
-        VideoViewHolder holder = activeHolders.get(position);
-        if (holder != null) holder.pauseVideo();
+        for (VideoViewHolder holder : activeHolders) {
+            if (holder.getBindingAdapterPosition() == position) holder.pauseVideo();
+        }
     }
 
     public void playVideo(int position) {
-        VideoViewHolder holder = activeHolders.get(position);
-        if (holder != null) holder.playVideo();
+        for (VideoViewHolder holder : activeHolders) {
+            if (holder.getBindingAdapterPosition() == position) holder.playVideo();
+        }
     }
 
     public void updateWatchCount(int position) {
@@ -122,12 +141,13 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public class VideoViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         StyledPlayerView videoView;
         ExoPlayer exoPlayer;
-        ImageView imvAvatar, imvLike, imvComment, imvShare, imvMore;
+        ImageView imvAvatar, imvLike, imvComment, imvShare, imvMore, imvVolume;
         TextView tvComment, tvFavorites, tvTitle, txvDescription, tvHashtags;
         ProgressBar pbLoading;
-        String authorId, videoId;
+        String authorId, boundVideoId;
         boolean isLiked = false;
         Video currentVideo;
+        ListenerRegistration likeListener, commentListener;
 
         public VideoViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -142,6 +162,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             imvComment = itemView.findViewById(R.id.imvComment);
             imvShare = itemView.findViewById(R.id.imvShare);
             imvMore = itemView.findViewById(R.id.imvMore);
+            imvVolume = itemView.findViewById(R.id.imvVolume);
             pbLoading = itemView.findViewById(R.id.pbLoading);
 
             videoView.setOnClickListener(this);
@@ -150,6 +171,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             imvComment.setOnClickListener(this);
             imvShare.setOnClickListener(this);
             imvMore.setOnClickListener(this);
+            if (imvVolume != null) imvVolume.setOnClickListener(this);
 
             videoView.setOnTouchListener(new OnSwipeTouchListener(itemView.getContext()) {
                 @Override public void onSwipeLeft() { moveToProfile(authorId); }
@@ -170,6 +192,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                     }
                 });
             }
+            updateVolumeUI();
         }
 
         public void playVideo() { if (exoPlayer != null) exoPlayer.play(); }
@@ -177,14 +200,34 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
 
         public void cleanup() {
             if (exoPlayer != null) { exoPlayer.release(); exoPlayer = null; videoView.setPlayer(null); }
+            if (likeListener != null) { likeListener.remove(); likeListener = null; }
+            if (commentListener != null) { commentListener.remove(); commentListener = null; }
+            boundVideoId = null;
         }
 
         private void updateLikeUI(boolean liked) {
             imvLike.setImageResource(R.drawable.ic_favorite);
             if (liked) {
-                imvLike.setColorFilter(Color.parseColor("#FE2C55")); // Màu hồng/đỏ TikTok khi đã thả tim
+                imvLike.setColorFilter(Color.parseColor("#FE2C55")); 
             } else {
-                imvLike.setColorFilter(Color.WHITE); // Màu trắng khi chưa thả tim
+                imvLike.setColorFilter(Color.WHITE); 
+            }
+        }
+
+        private void updateVolumeUI() {
+            if (exoPlayer != null) {
+                exoPlayer.setVolume(isMuted ? 0f : 1f);
+            }
+            if (imvVolume != null) {
+                imvVolume.setImageResource(isMuted ? R.drawable.ic_baseline_volume_off_24 : R.drawable.ic_baseline_volume_up_24);
+            }
+        }
+
+        private void toggleVolume() {
+            isMuted = !isMuted;
+            Toast.makeText(context, isMuted ? "Đã tắt âm" : "Đã bật âm", Toast.LENGTH_SHORT).show();
+            for (VideoViewHolder holder : activeHolders) {
+                holder.updateVolumeUI();
             }
         }
 
@@ -192,100 +235,87 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             if (video == null) return;
             this.currentVideo = video;
             this.authorId = video.getAuthorId();
-            this.videoId = video.getVideoId();
-            imvAvatar.setImageResource(R.drawable.default_avatar);
+            initPlayer();
 
-            if (video.getVideoUri() != null) {
-                initPlayer();
-                exoPlayer.setMediaItem(MediaItem.fromUri(video.getVideoUri()));
-                exoPlayer.prepare();
-                exoPlayer.setPlayWhenReady(position == currentPosition);
-            }
-
-            // 1. Tên người dùng (@username) và Avatar - Tải động từ profiles
-            String username = video.getUsername();
-            tvTitle.setText(username != null && !username.isEmpty() ? "@" + username : "@User");
-            com.google.firebase.firestore.FirebaseFirestore.getInstance().collection("profiles").document(authorId)
-                    .get().addOnSuccessListener(doc -> {
-                        if (doc.exists()) {
-                            String realUsername = doc.getString("username");
-                            String avatarUrl = doc.getString("avatarUrl");
-                            if (realUsername != null && !realUsername.isEmpty()) {
-                                tvTitle.setText("@" + realUsername);
-                            }
-                            if (avatarUrl != null && !avatarUrl.isEmpty() && context != null) {
-                                com.bumptech.glide.Glide.with(context)
-                                        .load(avatarUrl)
-                                        .placeholder(R.drawable.default_avatar)
-                                        .circleCrop()
-                                        .into(imvAvatar);
-                            }
-                        }
-                    });
-
-            // 2. Xử lý Mô tả và Hashtag
-            String description = video.getDescription();
-            StringBuilder hashtagsStr = new StringBuilder();
-            String cleanDescription = description != null ? description : "";
-            
-            // Regex lấy hashtag (bao gồm tiếng Việt)
-            final String REGEX = "#([A-Za-z0-9_\\u00C0-\\u1EF9-]+)";
-            
-            // Lấy từ mảng hashtags nếu có
-            List<String> hashtagsList = video.getHashtags();
-            if (hashtagsList != null && !hashtagsList.isEmpty()) {
-                for (String tag : hashtagsList) {
-                    if (!tag.startsWith("#")) hashtagsStr.append("#");
-                    hashtagsStr.append(tag).append(" ");
-                }
-            } else if (description != null && description.contains("#")) {
-                Matcher matcher = Pattern.compile(REGEX).matcher(description);
-                while (matcher.find()) {
-                    hashtagsStr.append(matcher.group(0)).append(" ");
+            String newUri = video.getVideoUri();
+            if (newUri != null) {
+                MediaItem currentItem = exoPlayer.getCurrentMediaItem();
+                String currentUri = (currentItem != null && currentItem.localConfiguration != null) 
+                                    ? currentItem.localConfiguration.uri.toString() : "";
+                if (!newUri.equals(currentUri)) {
+                    exoPlayer.setMediaItem(MediaItem.fromUri(newUri));
+                    exoPlayer.prepare();
+                    this.boundVideoId = null;
                 }
             }
 
-            // Hiển thị Hashtag (Vị trí: Ngay dưới Username nhờ XML)
-            if (hashtagsStr.length() > 0) {
-                tvHashtags.setText(hashtagsStr.toString().trim());
-                tvHashtags.setTextColor(Color.parseColor("#3D85C6")); // Xanh TikTok
-                tvHashtags.setVisibility(View.VISIBLE);
+            if (boundVideoId == null || !boundVideoId.equals(video.getVideoId())) {
+                this.boundVideoId = video.getVideoId();
                 
-                // Loại bỏ hashtag khỏi mô tả để hiển thị sạch hơn bên dưới
-                cleanDescription = cleanDescription.replaceAll(REGEX, "").trim();
-            } else {
-                // Ẩn view hashtag nếu video không có hashtag. 
-                // Đồng thời huỷ bỏ tự động gọi AI khi lướt feed để tránh cạn kiệt Quota API (Lỗi 429).
-                tvHashtags.setVisibility(View.GONE);
+                imvAvatar.setImageResource(R.drawable.default_avatar);
+                String username = video.getUsername();
+                tvTitle.setText(username != null && !username.isEmpty() ? "@" + username : "@User");
+                FirebaseFirestore.getInstance().collection("profiles").document(authorId)
+                        .get().addOnSuccessListener(doc -> {
+                            if (doc.exists() && video.getVideoId().equals(boundVideoId)) {
+                                String realUsername = doc.getString("username");
+                                String avatarUrl = doc.getString("avatarUrl");
+                                if (realUsername != null && !realUsername.isEmpty()) {
+                                    tvTitle.setText("@" + realUsername);
+                                }
+                                if (avatarUrl != null && !avatarUrl.isEmpty() && context != null) {
+                                    Glide.with(context).load(avatarUrl).placeholder(R.drawable.default_avatar).circleCrop().into(imvAvatar);
+                                }
+                            }
+                        });
+
+                // Logic tách Hashtag và Description
+                String description = video.getDescription();
+                StringBuilder hashtagsStr = new StringBuilder();
+                String cleanDescription = description != null ? description : "";
+                final String REGEX = "#([A-Za-z0-9_\\u00C0-\\u1EF9-]+)";
+                List<String> hashtagsList = video.getHashtags();
+                if (hashtagsList != null && !hashtagsList.isEmpty()) {
+                    for (String tag : hashtagsList) {
+                        if (!tag.startsWith("#")) hashtagsStr.append("#");
+                        hashtagsStr.append(tag).append(" ");
+                    }
+                } else if (description != null && description.contains("#")) {
+                    Matcher matcher = Pattern.compile(REGEX).matcher(description);
+                    while (matcher.find()) { hashtagsStr.append(matcher.group(0)).append(" "); }
+                }
+                if (hashtagsStr.length() > 0) {
+                    tvHashtags.setText(hashtagsStr.toString().trim());
+                    tvHashtags.setVisibility(View.VISIBLE);
+                    cleanDescription = cleanDescription.replaceAll(REGEX, "").trim();
+                } else {
+                    tvHashtags.setVisibility(View.GONE);
+                }
+                txvDescription.setText(cleanDescription.isEmpty() ? (description != null ? description : "") : cleanDescription);
+
+                setupRealtimeListeners(video.getVideoId());
             }
+            exoPlayer.setPlayWhenReady(position == currentPosition);
+            updateVolumeUI();
+        }
 
-            // Hiển thị Mô tả (nte / khinh khí cầu) - Nằm dưới Hashtag
-            txvDescription.setText(cleanDescription.isEmpty() ? (description != null ? description : "") : cleanDescription);
-
-            // 3. REAL-TIME DATA (Likes and Comments)
-            com.google.firebase.firestore.FirebaseFirestore firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance();
-            firestore.collection("likes").document(videoId).addSnapshotListener((snapshot, error) -> {
-                if (snapshot != null && snapshot.exists()) {
+        private void setupRealtimeListeners(String vid) {
+            if (likeListener != null) likeListener.remove();
+            if (commentListener != null) commentListener.remove();
+            FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+            likeListener = firestore.collection("likes").document(vid).addSnapshotListener((snapshot, error) -> {
+                if (snapshot != null && snapshot.exists() && vid.equals(boundVideoId)) {
                     Map<String, Object> data = snapshot.getData();
                     int likesCount = data != null ? data.size() : 0;
                     tvFavorites.setText(String.valueOf(likesCount));
-                    
-                    String currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? 
-                                        com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+                    String currentUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
                     isLiked = !currentUid.isEmpty() && data != null && data.containsKey(currentUid);
                     updateLikeUI(isLiked);
-                } else {
-                    tvFavorites.setText("0");
-                    isLiked = false;
-                    updateLikeUI(false);
                 }
             });
-
-            firestore.collection("comments").whereEqualTo("videoId", videoId).addSnapshotListener((snapshots, error) -> {
-                if (snapshots != null) {
+            commentListener = firestore.collection("comments").whereEqualTo("videoId", vid).addSnapshotListener((snapshots, error) -> {
+                if (snapshots != null && vid.equals(boundVideoId)) {
                     tvComment.setText(String.valueOf(snapshots.size()));
-                } else {
-                    tvComment.setText("0");
                 }
             });
         }
@@ -305,156 +335,58 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 shareDemo();
             } else if (id == R.id.imvMore) {
                 showMoreOptions();
+            } else if (id == R.id.imvVolume) {
+                toggleVolume();
+            }
+        }
+
+        private void toggleLikeLocal() {
+            String currentUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+            if (currentUid.isEmpty()) {
+                Toast.makeText(context, "Vui lòng đăng nhập!", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            isLiked = !isLiked;
+            updateLikeUI(isLiked);
+            FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+            if (isLiked) {
+                Map<String, Object> likeData = new HashMap<>();
+                likeData.put(currentUid, true);
+                firestore.collection("likes").document(boundVideoId).set(likeData, com.google.firebase.firestore.SetOptions.merge());
+            } else {
+                Map<String, Object> updates = new HashMap<>();
+                updates.put(currentUid, com.google.firebase.firestore.FieldValue.delete());
+                firestore.collection("likes").document(boundVideoId).update(updates);
             }
         }
 
         private void showMoreOptions() {
             String[] options = {"Báo cáo video này", "Lưu video", "Không quan tâm"};
-            new AlertDialog.Builder(context)
-                    .setItems(options, (dialog, which) -> {
-                        if (which == 0) {
-                            showReportDialog();
-                        } else {
-                            Toast.makeText(context, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
-                        }
-                    }).show();
+            new AlertDialog.Builder(context).setItems(options, (dialog, which) -> {
+                if (which == 0) showReportDialog();
+                else Toast.makeText(context, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
+            }).show();
         }
 
         private void showReportDialog() {
-            String[] reasons = {"Nội dung của tôi bị đăng lại không cho phép", "Nội dung nhạy cảm", "Spam", "Quấy rối"};
-            new AlertDialog.Builder(context)
-                    .setTitle("Lý do báo cáo")
-                    .setItems(reasons, (dialog, which) -> {
-                        submitReport(reasons[which]);
-                    }).show();
+            String[] reasons = {"Nội dung nhạy cảm", "Spam", "Quấy rối"};
+            new AlertDialog.Builder(context).setTitle("Lý do báo cáo").setItems(reasons, (dialog, which) -> submitReport(reasons[which])).show();
         }
 
         private void submitReport(String reason) {
             FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            if (user == null) {
-                Toast.makeText(context, "Vui lòng đăng nhập để báo cáo", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            if (authorId == null || authorId.isEmpty()) {
-                Toast.makeText(context, "Không xác định được chủ video", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
+            if (user == null) return;
             String reportId = UUID.randomUUID().toString();
-            String videoTitle = currentVideo.getDescription() != null ? currentVideo.getDescription() : "Video " + videoId;
-            Report report = new Report(reportId, user.getUid(), videoId, "video", reason, videoTitle);
-            
-            FirebaseFirestore.getInstance().collection("reports").document(reportId)
-                    .set(report.toMap())
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(context, "Báo cáo đã được gửi!", Toast.LENGTH_SHORT).show();
-                        sendAutomatedSystemMessage(authorId, videoTitle, reportId);
-                    })
-                    .addOnFailureListener(e -> Toast.makeText(context, "Lỗi gửi báo cáo: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        }
-
-        private void sendAutomatedSystemMessage(String targetUserId, String videoTitle, String reportId) {
-            String systemId = "system_admin";
-            String messageText = "Video \"" + videoTitle + "\" của bạn đã bị báo cáo. Bạn có thể nhấn vào đây để khiếu nại. [APPEAL:" + reportId + "]";
-            
-            DatabaseReference ref = FirebaseHelper.getDatabase().getReference();
-            long timestamp = System.currentTimeMillis();
-            
-            // Đảm bảo tạo roomId nhất quán
-            String roomId = (systemId.compareTo(targetUserId) < 0) ? systemId + "_" + targetUserId : targetUserId + "_" + systemId;
-
-            String msgKey = ref.child("Chats").child(roomId).push().getKey();
-            if (msgKey == null) return;
-
-            ChatMessage chatMessage = new ChatMessage(systemId, targetUserId, messageText, timestamp, "text");
-            
-            Map<String, Object> updates = new HashMap<>();
-            // 1. Lưu tin nhắn vào cuộc hội thoại giữa system_admin và người dùng
-            updates.put("/Chats/" + roomId + "/" + msgKey, chatMessage);
-
-            // 2. Cập nhật danh sách ChatList cho system_admin (để admin thấy)
-            Map<String, Object> chatListDataAdmin = new HashMap<>();
-            chatListDataAdmin.put("id", targetUserId);
-            chatListDataAdmin.put("lastMessage", "Thông báo báo cáo video");
-            chatListDataAdmin.put("timestamp", timestamp);
-            updates.put("/ChatList/" + systemId + "/" + targetUserId, chatListDataAdmin);
-
-            // 3. Cập nhật danh sách ChatList cho người dùng (để họ thấy tin nhắn trong Inbox)
-            Map<String, Object> chatListDataUser = new HashMap<>();
-            chatListDataUser.put("id", systemId);
-            chatListDataUser.put("lastMessage", "Thông báo hệ thống về video của bạn");
-            chatListDataUser.put("timestamp", timestamp);
-            updates.put("/ChatList/" + targetUserId + "/" + systemId, chatListDataUser);
-
-            ref.updateChildren(updates).addOnSuccessListener(aVoid -> {
-                Log.d("VideoAdapter", "Đã gửi tin nhắn hệ thống tới: " + targetUserId);
-            }).addOnFailureListener(e -> {
-                Log.e("VideoAdapter", "Lỗi gửi tin nhắn hệ thống: " + e.getMessage());
-            });
-        }
-
-        private void toggleLikeLocal() {
-            String currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser() != null ? 
-                                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
-            if (currentUid.isEmpty()) {
-                Toast.makeText(context, "Vui lòng đăng nhập để thả tim!", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            isLiked = !isLiked;
-            updateLikeUI(isLiked);
-
-            com.google.firebase.firestore.FirebaseFirestore firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance();
-            com.google.firebase.firestore.DocumentReference likeDocRef = firestore.collection("likes").document(videoId);
-            
-            if (isLiked) {
-                Map<String, Object> likeData = new HashMap<>();
-                likeData.put(currentUid, true);
-                likeDocRef.set(likeData, com.google.firebase.firestore.SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> {
-                        updateFirestoreTotalLikes(firestore);
-                    })
-                    .addOnFailureListener(e -> {
-                        isLiked = false;
-                        updateLikeUI(false);
-                        Toast.makeText(context, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-                
-                if (currentVideo != null) {
-                    RecommendationHelper.recordInterest(currentVideo.getDescription());
-                }
-            } else {
-                Map<String, Object> updates = new HashMap<>();
-                updates.put(currentUid, com.google.firebase.firestore.FieldValue.delete());
-                likeDocRef.update(updates)
-                    .addOnSuccessListener(aVoid -> {
-                        updateFirestoreTotalLikes(firestore);
-                    })
-                    .addOnFailureListener(e -> {
-                        isLiked = true;
-                        updateLikeUI(true);
-                        Toast.makeText(context, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    });
-            }
-        }
-
-        private void updateFirestoreTotalLikes(com.google.firebase.firestore.FirebaseFirestore firestore) {
-            firestore.collection("likes").document(videoId).get().addOnSuccessListener(snapshot -> {
-                if (snapshot != null && snapshot.exists()) {
-                    int newLikesCount = snapshot.getData() != null ? snapshot.getData().size() : 0;
-                    firestore.collection("videos").document(videoId).update("totalLikes", newLikesCount);
-                }
-            });
-        }
-
-        private void shareDemo() {
-            Toast.makeText(context, "Đang mở bảng chia sẻ...", Toast.LENGTH_SHORT).show();
+            Report report = new Report(reportId, user.getUid(), boundVideoId, "video", reason, currentVideo.getDescription());
+            FirebaseFirestore.getInstance().collection("reports").document(reportId).set(report.toMap())
+                .addOnSuccessListener(aVoid -> {
+                    Toast.makeText(context, "Báo cáo thành công!", Toast.LENGTH_SHORT).show();
+                });
         }
 
         private void showComments() {
             Intent intent = new Intent(context, CommentActivity.class);
-            intent.putExtra("videoId", videoId);
+            intent.putExtra("videoId", boundVideoId);
             context.startActivity(intent);
         }
 
@@ -462,6 +394,26 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             Intent intent = new Intent(context, ProfileActivity.class); 
             intent.putExtra("id", uid);
             context.startActivity(intent); 
+        }
+
+        private void shareDemo() {
+            final Dialog dialog = new Dialog(context);
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+            dialog.setContentView(R.layout.share_video_layout);
+            dialog.findViewById(R.id.btnCopyURL).setOnClickListener(view -> {
+                ClipboardManager cb = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData data = ClipData.newPlainText("video-link", currentVideo.getVideoUri());
+                cb.setPrimaryClip(data);
+                Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show();
+            });
+            dialog.findViewById(R.id.txvCancelInSharedPlace).setOnClickListener(view -> dialog.cancel());
+            dialog.show();
+            Window window = dialog.getWindow();
+            if (window != null) {
+                window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                window.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                window.setGravity(Gravity.BOTTOM);
+            }
         }
     }
 }

@@ -10,6 +10,7 @@ import android.widget.ProgressBar;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.tiktokcloneproject.R;
@@ -25,6 +26,7 @@ import com.google.firebase.firestore.Query;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class VideoFragment extends Fragment {
     private Context context = null;
@@ -64,6 +66,12 @@ public class VideoFragment extends Fragment {
         viewPager2 = layout.findViewById(R.id.viewPager);
         progressBar = layout.findViewById(R.id.loadingGif);
         
+        // Tắt animation để tránh giật lag khi cập nhật dữ liệu
+        View rvChild = viewPager2.getChildAt(0);
+        if (rvChild instanceof RecyclerView) {
+            ((RecyclerView) rvChild).setItemAnimator(null);
+        }
+
         if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
 
         videos = new ArrayList<>();
@@ -90,11 +98,7 @@ public class VideoFragment extends Fragment {
 
     private void loadRecommendedVideos() {
         RecommendationHelper.getTopInterests().addOnSuccessListener(interests -> {
-            if (interests == null || interests.isEmpty()) {
-                loadVideos(null); // Không có sở thích thì load mặc định
-            } else {
-                loadVideos(interests);
-            }
+            loadVideos(interests);
         }).addOnFailureListener(e -> loadVideos(null));
     }
 
@@ -113,85 +117,89 @@ public class VideoFragment extends Fragment {
     private void loadVideos(List<String> interests) {
         if (db == null) return;
         
-        Query query = db.collection("videos");
-        
-        videoListener = query.orderBy("timestamp", Query.Direction.DESCENDING)
+        videoListener = db.collection("videos").orderBy("timestamp", Query.Direction.DESCENDING)
                 .limit(50)
                 .addSnapshotListener((snapshots, e) -> {
-                    if (e != null) {
-                        Log.e(TAG, "Lỗi tải video: " + e.getMessage());
-                        if (progressBar != null) progressBar.setVisibility(View.GONE);
-                        return;
-                    }
+                    if (e != null || snapshots == null) return;
+                    if (progressBar != null) progressBar.setVisibility(View.GONE);
                     
-                    if (snapshots != null) {
-                        if (progressBar != null) progressBar.setVisibility(View.GONE);
+                    boolean isFirstLoad = videos.isEmpty();
+                    
+                    for (DocumentChange dc : snapshots.getDocumentChanges()) {
+                        Video video = dc.getDocument().toObject(Video.class);
+                        String vidId = video.getVideoId();
                         
-                        boolean isFirstLoad = videos.isEmpty();
-                        
-                        for (DocumentChange dc : snapshots.getDocumentChanges()) {
-                            Video video = dc.getDocument().toObject(Video.class);
-                            
-                            // Bỏ qua video bị gỡ HOẶC đang chờ duyệt
-                            if ("rejected".equals(video.getModerationStatus()) || "pending".equals(video.getModerationStatus())) {
-                                if (dc.getType() == DocumentChange.Type.MODIFIED || dc.getType() == DocumentChange.Type.REMOVED) {
-                                    // Xóa video này khỏi danh sách nếu nó vừa bị gỡ
-                                    int oldIndex = dc.getOldIndex();
-                                    if (oldIndex < videos.size() && oldIndex != -1) {
-                                        // Tìm chính xác vị trí trong list nội bộ vì index có thể khác
-                                        int index = -1;
-                                        for(int i=0; i<videos.size(); i++) {
-                                            if (videos.get(i).getVideoId().equals(video.getVideoId())) { index = i; break; }
+                        boolean isVisible = !"rejected".equals(video.getModerationStatus()) && !"pending".equals(video.getModerationStatus());
+                        int currentIndex = findVideoIndexById(vidId);
+
+                        switch (dc.getType()) {
+                            case ADDED:
+                                if (isVisible && currentIndex == -1) {
+                                    int insertPos = 0;
+                                    for (int i = 0; i < videos.size(); i++) {
+                                        if (video.getTimestamp() > videos.get(i).getTimestamp()) break;
+                                        insertPos++;
+                                    }
+                                    videos.add(insertPos, video);
+                                    videoAdapter.notifyItemInserted(insertPos);
+                                }
+                                break;
+                            case MODIFIED:
+                                if (!isVisible) {
+                                    if (currentIndex != -1) {
+                                        videos.remove(currentIndex);
+                                        videoAdapter.notifyItemRemoved(currentIndex);
+                                    }
+                                } else {
+                                    if (currentIndex == -1) {
+                                        // Xử lý thêm mới nếu trước đó chưa có trong list
+                                        int insertPos = 0;
+                                        for (int i = 0; i < videos.size(); i++) {
+                                            if (video.getTimestamp() > videos.get(i).getTimestamp()) break;
+                                            insertPos++;
                                         }
-                                        if (index != -1) {
-                                            videos.remove(index);
-                                            videoAdapter.notifyItemRemoved(index);
+                                        videos.add(insertPos, video);
+                                        videoAdapter.notifyItemInserted(insertPos);
+                                    } else {
+                                        Video oldVideo = videos.get(currentIndex);
+                                        videos.set(currentIndex, video);
+                                        
+                                        // ĐỒNG BỘ THÔNG MINH:
+                                        // 1. Nếu link video thay đổi -> Cần load lại video (Dùng notify full)
+                                        // 2. Nếu chỉ đổi mô tả/hashtag -> Cập nhật UI nhẹ (Dùng payload)
+                                        // 3. Nếu chỉ đổi số tim/comment -> IM LẶNG (Vì ViewHolder đã tự lắng nghe real-time rồi)
+                                        
+                                        if (!Objects.equals(oldVideo.getVideoUri(), video.getVideoUri())) {
+                                            videoAdapter.notifyItemChanged(currentIndex);
+                                        } else if (!Objects.equals(oldVideo.getDescription(), video.getDescription())) {
+                                            videoAdapter.notifyItemChanged(currentIndex, "METADATA_UPDATE");
                                         }
                                     }
                                 }
-                                continue;
-                            }
-                            
-                            int newIndex = dc.getNewIndex();
-                            int oldIndex = dc.getOldIndex();
-
-                            switch (dc.getType()) {
-                                case ADDED:
-                                    if (newIndex <= videos.size()) {
-                                        videos.add(newIndex, video);
-                                        videoAdapter.notifyItemInserted(newIndex);
-                                    } else {
-                                        videos.add(video);
-                                        videoAdapter.notifyItemInserted(videos.size() - 1);
-                                    }
-                                    break;
-                                case MODIFIED:
-                                    if (oldIndex == newIndex) {
-                                        videos.set(newIndex, video);
-                                        videoAdapter.notifyItemChanged(newIndex);
-                                    } else {
-                                        videos.remove(oldIndex);
-                                        videos.add(newIndex, video);
-                                        videoAdapter.notifyItemMoved(oldIndex, newIndex);
-                                        videoAdapter.notifyItemChanged(newIndex);
-                                    }
-                                    break;
-                                case REMOVED:
-                                    if (oldIndex < videos.size()) {
-                                        videos.remove(oldIndex);
-                                        videoAdapter.notifyItemRemoved(oldIndex);
-                                    }
-                                    break;
-                            }
-                        }
-                        
-                        if (isFirstLoad && !videos.isEmpty()) {
-                            viewPager2.post(() -> {
-                                if (videoAdapter != null) videoAdapter.playVideo(0);
-                            });
+                                break;
+                            case REMOVED:
+                                if (currentIndex != -1) {
+                                    videos.remove(currentIndex);
+                                    videoAdapter.notifyItemRemoved(currentIndex);
+                                }
+                                break;
                         }
                     }
+                    
+                    if (isFirstLoad && !videos.isEmpty()) {
+                        viewPager2.post(() -> {
+                            if (videoAdapter != null) videoAdapter.playVideo(0);
+                        });
+                    }
                 });
+    }
+
+    private int findVideoIndexById(String id) {
+        if (id == null) return -1;
+        for (int i = 0; i < videos.size(); i++) {
+            if (id.equals(videos.get(i).getVideoId())) return i;
+        }
+        return -1;
     }
 
     @Override
