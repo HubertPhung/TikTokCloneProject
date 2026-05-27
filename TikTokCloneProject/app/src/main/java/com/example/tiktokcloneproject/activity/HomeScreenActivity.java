@@ -173,11 +173,17 @@ public class HomeScreenActivity extends FragmentActivity implements View.OnClick
         }
     }
 
-    private void handleSearchClick() {
+    public void handleSearchClick() {
+        handleSearchClick(null);
+    }
+
+    public void handleSearchClick(String query) {
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         if (searchFragment == null) {
-            searchFragment = SearchFragment.newInstance("search");
+            searchFragment = SearchFragment.newInstance("search", query);
             ft.add(R.id.main_fragment, searchFragment, "search");
+        } else if (query != null) {
+            searchFragment.onTagClick(query);
         }
         showFragments(ft, 1);
         ft.commit();
@@ -236,6 +242,11 @@ public class HomeScreenActivity extends FragmentActivity implements View.OnClick
     }
 
     private void handleHomeClick() {
+        if (videoFragment != null && !videoFragment.isHidden()) {
+            videoFragment.scrollToTop();
+            return;
+        }
+
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         if (videoFragment == null) {
             videoFragment = VideoFragment.newInstance("fragment_video");

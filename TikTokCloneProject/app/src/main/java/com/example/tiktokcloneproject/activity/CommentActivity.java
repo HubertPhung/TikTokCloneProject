@@ -145,20 +145,28 @@ public class CommentActivity extends Activity implements View.OnClickListener{
                         }
 
                         for (DocumentChange dc : snapshots.getDocumentChanges()) {
+                            Comment comment = dc.getDocument().toObject(Comment.class);
+                            int index = findCommentIndex(comment.getCommentId());
+                            
                             switch (dc.getType()) {
                                 case ADDED:
-                                    comments.add(0, dc.getDocument().toObject(Comment.class));
-                                    adapter.notifyDataSetChanged();
+                                    if (index == -1) {
+                                        comments.add(0, comment);
+                                    }
                                     break;
                                 case MODIFIED:
-                                    Log.d(TAG, "Modified city: " + dc.getDocument().getData());
+                                    if (index != -1) {
+                                        comments.set(index, comment);
+                                    }
                                     break;
                                 case REMOVED:
-                                    Log.d(TAG, "Removed city: " + dc.getDocument().getData());
+                                    if (index != -1) {
+                                        comments.remove(index);
+                                    }
                                     break;
                             }
                         }
-
+                        adapter.notifyDataSetChanged();
                     }
                 });
 
@@ -190,6 +198,13 @@ public class CommentActivity extends Activity implements View.OnClickListener{
 
     }
 
+    private int findCommentIndex(String id) {
+        for (int i = 0; i < comments.size(); i++) {
+            if (comments.get(i).getCommentId().equals(id)) return i;
+        }
+        return -1;
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
@@ -215,8 +230,6 @@ public class CommentActivity extends Activity implements View.OnClickListener{
     }
 
     private void postComment(Comment comment ) {
-        Map<String, Object> values = comment.toMap();
-
         db.collection("comments").document(comment.getCommentId()).set(comment).addOnCompleteListener(new OnCompleteListener<Void>() {
             @Override
             public void onComplete(@NonNull Task<Void> task) {

@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="#000000"
     tools:context=".activity.SearchActivity">
 
     <!-- HEADER -->
@@ -19,14 +19,15 @@
         android:layout_marginHorizontal="4dp">
 
         <!-- BACK BUTTON -->
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/imbBackToHome"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@android:drawable/ic_menu_revert"
             android:background="@android:color/transparent"
             android:contentDescription="Back"
-            android:layout_marginEnd="4dp"/>
+            android:layout_marginEnd="4dp"
+            app:tint="@color/tiktok_red" />
 
         <!-- SEARCH -->
         <androidx.appcompat.widget.SearchView
@@ -55,20 +56,109 @@
             android:minWidth="48dp"
             android:minHeight="48dp"
             android:paddingHorizontal="8dp"
-            android:paddingVertical="8dp"/>
+            android:paddingVertical="8dp"
+            android:gravity="center"/>
     </LinearLayout>
 
-    <!-- USER LIST -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rcv_users"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="match_parent">
 
-    <!-- VIDEO GRID -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rcvVideoSummary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <!-- SEARCH HISTORY SECTION -->
+            <LinearLayout
+                android:id="@+id/llSearchHistory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lịch sử tìm kiếm"
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="14sp"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"/>
+
+                    <TextView
+                        android:id="@+id/tvClearHistory"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Xóa tất cả"
+                        android:textColor="@color/tiktok_red"
+                        android:textSize="12sp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:padding="4dp"
+                        android:clickable="true"
+                        android:focusable="true"/>
+                </RelativeLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rcvSearchHistory"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:clipToPadding="false"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/trending_tag_item"/>
+            </LinearLayout>
+
+            <!-- TRENDING TAGS SECTION -->
+            <LinearLayout
+                android:id="@+id/llTrendingTags"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tìm kiếm nổi bật"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="14sp"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginBottom="8dp"/>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rcvTrendingTags"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:clipToPadding="false"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/trending_tag_item"/>
+            </LinearLayout>
+
+            <!-- USER LIST -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rcv_users"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
+
+            <!-- VIDEO GRID -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rcvVideoSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>

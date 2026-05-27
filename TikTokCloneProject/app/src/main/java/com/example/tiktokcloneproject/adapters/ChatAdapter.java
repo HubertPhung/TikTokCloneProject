@@ -66,9 +66,15 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             holder.show_message.setText(message);
         }
 
+        // Hiện ảnh đại diện cho mọi tin nhắn bên trái (Người nhận)
         if (getItemViewType(position) == MSG_TYPE_LEFT && holder.profile_image != null) {
+            holder.profile_image.setVisibility(View.VISIBLE);
             if (imageUrl != null && !imageUrl.isEmpty()) {
-                Glide.with(mContext).load(imageUrl).placeholder(R.drawable.default_avatar).into(holder.profile_image);
+                Glide.with(mContext)
+                    .load(imageUrl)
+                    .placeholder(R.drawable.default_avatar)
+                    .error(R.drawable.default_avatar)
+                    .into(holder.profile_image);
             } else {
                 holder.profile_image.setImageResource(R.drawable.default_avatar);
             }

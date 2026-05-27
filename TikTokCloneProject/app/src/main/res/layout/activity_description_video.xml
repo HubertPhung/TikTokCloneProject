@@ -21,6 +21,7 @@
             app:tint="@color/tiktok_white"
             android:contentDescription="Back" />
         <TextView
+            android:id="@+id/tvTitleScreen"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Đăng video"

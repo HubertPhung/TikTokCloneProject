@@ -3,7 +3,7 @@ package com.example.tiktokcloneproject.activity;
 import static android.content.ContentValues.TAG;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.Nullable;
 import androidx.viewpager2.widget.ViewPager2;
 
 import android.app.Activity;
@@ -18,12 +18,11 @@ import android.view.View;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.adapters.VideoAdapter;
 import com.example.tiktokcloneproject.model.Video;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +35,7 @@ public class VideoActivity extends Activity {
     private VideoAdapter videoAdapter;
     private FirebaseAuth mAuth;
     private FirebaseUser user;
+    private ListenerRegistration videoListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,33 +80,39 @@ public class VideoActivity extends Activity {
         });
 
         db = FirebaseFirestore.getInstance();
-        db.collection("videos").document(videoId)
-                .get().addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot document = task.getResult();
-                        if (document != null && document.exists()) {
-                            Video video = document.toObject(Video.class);
-                            if (video != null) {
-                                if ("rejected".equals(video.getModerationStatus())) {
-                                    android.widget.Toast.makeText(VideoActivity.this, "Video này đã bị gỡ bỏ do vi phạm tiêu chuẩn cộng đồng.", android.widget.Toast.LENGTH_LONG).show();
-                                    finish();
-                                    return;
-                                }
-                                if ("pending".equals(video.getModerationStatus()) && (user == null || !user.getUid().equals(video.getAuthorId()))) {
-                                    android.widget.Toast.makeText(VideoActivity.this, "Video đang được kiểm duyệt.", android.widget.Toast.LENGTH_LONG).show();
-                                    finish();
-                                    return;
-                                }
+        
+        // SỬA LỖI: Chuyển từ get() sang addSnapshotListener để cập nhật mô tả ngay lập tức khi sửa xong
+        videoListener = db.collection("videos").document(videoId)
+                .addSnapshotListener((document, error) -> {
+                    if (error != null) {
+                        Log.w(TAG, "Listen failed.", error);
+                        return;
+                    }
+
+                    if (document != null && document.exists()) {
+                        Video video = document.toObject(Video.class);
+                        if (video != null) {
+                            if ("rejected".equals(video.getModerationStatus())) {
+                                android.widget.Toast.makeText(VideoActivity.this, "Video này đã bị gỡ bỏ.", android.widget.Toast.LENGTH_LONG).show();
+                                finish();
+                                return;
+                            }
+                            
+                            if (videos.isEmpty()) {
                                 videos.add(video);
                                 videoAdapter.notifyItemInserted(0);
-                                // Tự động chạy video đầu tiên sau khi load xong
                                 viewPager2.post(() -> videoAdapter.playVideo(0));
+                            } else {
+                                videos.set(0, video);
+                                // Cập nhật Metadata (mô tả/hashtag) mà không reset video
+                                videoAdapter.notifyItemChanged(0, "METADATA_UPDATE");
                             }
-                        } else {
-                            Log.d(TAG, "No such document");
                         }
                     } else {
-                        Log.d(TAG, "get failed with ", task.getException());
+                        Log.d(TAG, "Document does not exist");
+                        if (!videos.isEmpty()) {
+                            finish(); // Video đã bị xóa
+                        }
                     }
                 });
     }
@@ -124,9 +130,11 @@ public class VideoActivity extends Activity {
     }
 
     @Override
-    public void onDestroy() {
+    protected void onDestroy() {
         super.onDestroy();
-        // Không gọi continueVideo ở đây vì Activity đang bị hủy
+        if (videoListener != null) {
+            videoListener.remove();
+        }
     }
 
     public void pauseVideo() {

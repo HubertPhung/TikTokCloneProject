@@ -7,6 +7,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -25,6 +30,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.activity.CommentActivity;
+import com.example.tiktokcloneproject.activity.DescriptionVideoActivity;
+import com.example.tiktokcloneproject.activity.HomeScreenActivity;
 import com.example.tiktokcloneproject.activity.ProfileActivity;
 import com.example.tiktokcloneproject.helper.FirebaseHelper;
 import com.example.tiktokcloneproject.helper.GlobalVariable;
@@ -49,6 +56,8 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -89,7 +98,11 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     @Override
     public void onBindViewHolder(@NonNull VideoViewHolder holder, int position, @NonNull List<Object> payloads) {
         if (!payloads.isEmpty()) {
-            holder.currentVideo = videos.get(position);
+            Video video = videos.get(position);
+            holder.currentVideo = video;
+            // Cập nhật Metadata (mô tả/hashtag) ngay lập tức
+            holder.updateMetadataUI(video);
+            Log.d("VideoAdapter", "Payload update (Metadata) for: " + video.getVideoId());
         } else {
             super.onBindViewHolder(holder, position, payloads);
         }
@@ -231,6 +244,66 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             }
         }
 
+        public void updateMetadataUI(Video video) {
+            if (video == null) return;
+            
+            String description = video.getDescription();
+            String cleanDescription = description != null ? description : "";
+            final String REGEX = "#([A-Za-z0-9_\\u00C0-\\u1EF9-]+)";
+            
+            List<String> hashtagsList = video.getHashtags();
+            if (hashtagsList == null || hashtagsList.isEmpty()) {
+                hashtagsList = new ArrayList<>();
+                if (description != null && description.contains("#")) {
+                    Matcher matcher = Pattern.compile(REGEX).matcher(description);
+                    while (matcher.find()) {
+                        hashtagsList.add(matcher.group(1));
+                    }
+                }
+            }
+
+            if (!hashtagsList.isEmpty()) {
+                StringBuilder fullHashtags = new StringBuilder();
+                for (String tag : hashtagsList) {
+                    fullHashtags.append("#").append(tag).append(" ");
+                }
+                
+                SpannableString spannableString = new SpannableString(fullHashtags.toString().trim());
+                int start = 0;
+                for (String tag : hashtagsList) {
+                    String tagWithHash = "#" + tag;
+                    int tagStart = spannableString.toString().indexOf(tagWithHash, start);
+                    if (tagStart != -1) {
+                        int tagEnd = tagStart + tagWithHash.length();
+                        spannableString.setSpan(new ClickableSpan() {
+                            @Override
+                            public void onClick(@NonNull View widget) {
+                                if (context instanceof HomeScreenActivity) {
+                                    ((HomeScreenActivity) context).handleSearchClick(tagWithHash);
+                                }
+                            }
+                            @Override
+                            public void updateDrawState(@NonNull TextPaint ds) {
+                                super.updateDrawState(ds);
+                                ds.setUnderlineText(false);
+                                ds.setColor(Color.WHITE);
+                                ds.setFakeBoldText(true);
+                            }
+                        }, tagStart, tagEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        start = tagEnd;
+                    }
+                }
+                
+                tvHashtags.setText(spannableString);
+                tvHashtags.setMovementMethod(LinkMovementMethod.getInstance());
+                tvHashtags.setVisibility(View.VISIBLE);
+                cleanDescription = cleanDescription.replaceAll(REGEX, "").trim();
+            } else {
+                tvHashtags.setVisibility(View.GONE);
+            }
+            txvDescription.setText(cleanDescription.isEmpty() ? (description != null ? description : "") : cleanDescription);
+        }
+
         public void setVideoObjects(Video video, int position) {
             if (video == null) return;
             this.currentVideo = video;
@@ -248,6 +321,9 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                     this.boundVideoId = null;
                 }
             }
+
+            // Luôn cập nhật Metadata kể cả khi VideoId trùng (để sửa mô tả có tác dụng ngay)
+            updateMetadataUI(video);
 
             if (boundVideoId == null || !boundVideoId.equals(video.getVideoId())) {
                 this.boundVideoId = video.getVideoId();
@@ -269,30 +345,6 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                             }
                         });
 
-                // Logic tách Hashtag và Description
-                String description = video.getDescription();
-                StringBuilder hashtagsStr = new StringBuilder();
-                String cleanDescription = description != null ? description : "";
-                final String REGEX = "#([A-Za-z0-9_\\u00C0-\\u1EF9-]+)";
-                List<String> hashtagsList = video.getHashtags();
-                if (hashtagsList != null && !hashtagsList.isEmpty()) {
-                    for (String tag : hashtagsList) {
-                        if (!tag.startsWith("#")) hashtagsStr.append("#");
-                        hashtagsStr.append(tag).append(" ");
-                    }
-                } else if (description != null && description.contains("#")) {
-                    Matcher matcher = Pattern.compile(REGEX).matcher(description);
-                    while (matcher.find()) { hashtagsStr.append(matcher.group(0)).append(" "); }
-                }
-                if (hashtagsStr.length() > 0) {
-                    tvHashtags.setText(hashtagsStr.toString().trim());
-                    tvHashtags.setVisibility(View.VISIBLE);
-                    cleanDescription = cleanDescription.replaceAll(REGEX, "").trim();
-                } else {
-                    tvHashtags.setVisibility(View.GONE);
-                }
-                txvDescription.setText(cleanDescription.isEmpty() ? (description != null ? description : "") : cleanDescription);
-
                 setupRealtimeListeners(video.getVideoId());
             }
             exoPlayer.setPlayWhenReady(position == currentPosition);
@@ -306,18 +358,25 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             likeListener = firestore.collection("likes").document(vid).addSnapshotListener((snapshot, error) -> {
                 if (snapshot != null && snapshot.exists() && vid.equals(boundVideoId)) {
                     Map<String, Object> data = snapshot.getData();
-                    int likesCount = data != null ? data.size() : 0;
-                    tvFavorites.setText(String.valueOf(likesCount));
+                    tvFavorites.setText(String.valueOf(likesCount(data)));
                     String currentUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
                     isLiked = !currentUid.isEmpty() && data != null && data.containsKey(currentUid);
                     updateLikeUI(isLiked);
                 }
             });
+
             commentListener = firestore.collection("comments").whereEqualTo("videoId", vid).addSnapshotListener((snapshots, error) -> {
                 if (snapshots != null && vid.equals(boundVideoId)) {
                     tvComment.setText(String.valueOf(snapshots.size()));
                 }
             });
+        }
+        
+        private int likesCount(Map<String, Object> data) {
+            if (data == null) return 0;
+            int count = 0;
+            for (Object val : data.values()) { if (val instanceof Boolean && (Boolean)val) count++; }
+            return count;
         }
 
         @Override public void onClick(View v) {
@@ -361,11 +420,54 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         }
 
         private void showMoreOptions() {
-            String[] options = {"Báo cáo video này", "Lưu video", "Không quan tâm"};
+            String currentUid = FirebaseAuth.getInstance().getUid();
+            boolean isOwner = currentUid != null && currentUid.equals(authorId);
+
+            List<String> optionsList = new ArrayList<>(Arrays.asList("Báo cáo video này", "Lưu video", "Không quan tâm"));
+            if (isOwner) {
+                optionsList.add("Sửa mô tả");
+                optionsList.add("Xóa video này");
+            }
+
+            String[] options = optionsList.toArray(new String[0]);
             new AlertDialog.Builder(context).setItems(options, (dialog, which) -> {
-                if (which == 0) showReportDialog();
-                else Toast.makeText(context, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
+                String selected = options[which];
+                if (selected.equals("Báo cáo video này")) {
+                    showReportDialog();
+                } else if (selected.equals("Xóa video này")) {
+                    showDeleteConfirmation();
+                } else if (selected.equals("Sửa mô tả")) {
+                    Intent editIntent = new Intent(context, DescriptionVideoActivity.class);
+                    editIntent.putExtra("isEditMode", true);
+                    editIntent.putExtra("videoId", boundVideoId);
+                    context.startActivity(editIntent);
+                } else {
+                    Toast.makeText(context, "Tính năng đang phát triển", Toast.LENGTH_SHORT).show();
+                }
             }).show();
+        }
+
+        private void showDeleteConfirmation() {
+            new AlertDialog.Builder(context)
+                    .setTitle("Xóa video")
+                    .setMessage("Bạn có chắc chắn muốn xóa video này không?")
+                    .setPositiveButton("Xóa", (dialog, which) -> deleteVideo())
+                    .setNegativeButton("Hủy", null)
+                    .show();
+        }
+
+        private void deleteVideo() {
+            FirebaseFirestore.getInstance().collection("videos").document(boundVideoId)
+                    .delete()
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(context, "Đã xóa video", Toast.LENGTH_SHORT).show();
+                        int pos = getBindingAdapterPosition();
+                        if (pos != RecyclerView.NO_POSITION) {
+                            videos.remove(pos);
+                            notifyItemRemoved(pos);
+                        }
+                    })
+                    .addOnFailureListener(e -> Toast.makeText(context, "Xóa thất bại", Toast.LENGTH_SHORT).show());
         }
 
         private void showReportDialog() {
@@ -387,6 +489,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         private void showComments() {
             Intent intent = new Intent(context, CommentActivity.class);
             intent.putExtra("videoId", boundVideoId);
+            intent.putExtra("authorId", authorId); // Đã thêm: truyền ID tác giả video
             context.startActivity(intent);
         }
 
@@ -402,8 +505,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             dialog.setContentView(R.layout.share_video_layout);
             dialog.findViewById(R.id.btnCopyURL).setOnClickListener(view -> {
                 ClipboardManager cb = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData data = ClipData.newPlainText("video-link", currentVideo.getVideoUri());
-                cb.setPrimaryClip(data);
+                cb.setPrimaryClip(ClipData.newPlainText("video-link", currentVideo.getVideoUri()));
                 Toast.makeText(context, "Link copied", Toast.LENGTH_SHORT).show();
             });
             dialog.findViewById(R.id.txvCancelInSharedPlace).setOnClickListener(view -> dialog.cancel());

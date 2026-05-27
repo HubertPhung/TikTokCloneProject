@@ -66,7 +66,6 @@ public class VideoFragment extends Fragment {
         viewPager2 = layout.findViewById(R.id.viewPager);
         progressBar = layout.findViewById(R.id.loadingGif);
         
-        // Tắt animation để tránh giật lag khi cập nhật dữ liệu
         View rvChild = viewPager2.getChildAt(0);
         if (rvChild instanceof RecyclerView) {
             ((RecyclerView) rvChild).setItemAnimator(null);
@@ -103,14 +102,16 @@ public class VideoFragment extends Fragment {
     }
 
     public void pauseVideo() {
-        if (videoAdapter != null) {
-            videoAdapter.pauseVideo(videoAdapter.getCurrentPosition());
-        }
+        if (videoAdapter != null) videoAdapter.pauseVideo(videoAdapter.getCurrentPosition());
     }
 
     public void continueVideo() {
-        if (videoAdapter != null) {
-            videoAdapter.playVideo(videoAdapter.getCurrentPosition());
+        if (videoAdapter != null) videoAdapter.playVideo(videoAdapter.getCurrentPosition());
+    }
+
+    public void scrollToTop() {
+        if (viewPager2 != null && videos != null && !videos.isEmpty()) {
+            viewPager2.setCurrentItem(0, true);
         }
     }
 
@@ -152,7 +153,6 @@ public class VideoFragment extends Fragment {
                                     }
                                 } else {
                                     if (currentIndex == -1) {
-                                        // Xử lý thêm mới nếu trước đó chưa có trong list
                                         int insertPos = 0;
                                         for (int i = 0; i < videos.size(); i++) {
                                             if (video.getTimestamp() > videos.get(i).getTimestamp()) break;
@@ -162,16 +162,16 @@ public class VideoFragment extends Fragment {
                                         videoAdapter.notifyItemInserted(insertPos);
                                     } else {
                                         Video oldVideo = videos.get(currentIndex);
+                                        // So sánh trước khi cập nhật list
+                                        boolean isUriChanged = !Objects.equals(oldVideo.getVideoUri(), video.getVideoUri());
+                                        
                                         videos.set(currentIndex, video);
                                         
-                                        // ĐỒNG BỘ THÔNG MINH:
-                                        // 1. Nếu link video thay đổi -> Cần load lại video (Dùng notify full)
-                                        // 2. Nếu chỉ đổi mô tả/hashtag -> Cập nhật UI nhẹ (Dùng payload)
-                                        // 3. Nếu chỉ đổi số tim/comment -> IM LẶNG (Vì ViewHolder đã tự lắng nghe real-time rồi)
-                                        
-                                        if (!Objects.equals(oldVideo.getVideoUri(), video.getVideoUri())) {
+                                        if (isUriChanged) {
                                             videoAdapter.notifyItemChanged(currentIndex);
-                                        } else if (!Objects.equals(oldVideo.getDescription(), video.getDescription())) {
+                                        } else {
+                                            // Luôn notify với payload khi có thay đổi khác (mô tả, hashtag, like, comment)
+                                            // để ViewHolder cập nhật UI ngay lập tức
                                             videoAdapter.notifyItemChanged(currentIndex, "METADATA_UPDATE");
                                         }
                                     }

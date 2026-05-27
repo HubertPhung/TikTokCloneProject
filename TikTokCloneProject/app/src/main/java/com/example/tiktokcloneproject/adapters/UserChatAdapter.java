@@ -68,6 +68,7 @@ public class UserChatAdapter extends RecyclerView.Adapter<UserChatAdapter.ViewHo
             Intent intent = new Intent(mContext, ChatActivity.class);
             intent.putExtra("receiver_id", user.getUserId());
             intent.putExtra("receiver_name", user.getUsername());
+            intent.putExtra("receiver_avatar", user.getAvatarUrl()); // Đã thêm: Truyền link ảnh đại diện
             mContext.startActivity(intent);
         });
     }

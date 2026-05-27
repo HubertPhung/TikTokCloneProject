@@ -42,9 +42,7 @@ public class SettingsAndPrivacyActivity extends AppCompatActivity {
         imvBackToProfile.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                Intent intent = new Intent(SettingsAndPrivacyActivity.this, ProfileActivity.class);
-//                startActivity(intent);
-                onBackPressed();
+                // FIX: Chỉ gọi finish() để quay lại trang Profile
                 finish();
             }
         });
@@ -54,19 +52,19 @@ public class SettingsAndPrivacyActivity extends AppCompatActivity {
             public void onClick(View view) {
                 Intent intent = new Intent(SettingsAndPrivacyActivity.this, AccountSettingActivity.class);
                 startActivity(intent);
-
-                finish();
+                // FIX: KHÔNG gọi finish() ở đây để giữ SettingsAndPrivacyActivity trong stack
             }
         });
 
         flShareProfileOption.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("toptop-link", "http://toptoptoptop.com/" + user.getUid().toString());
-                clipboard.setPrimaryClip(clip);
-                Toast.makeText(SettingsAndPrivacyActivity.this, "Profile link has been saved to clipboard", Toast.LENGTH_SHORT).show();
-
-
+            public void onClick(View view) {
+                if (user != null) {
+                    ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    ClipData clip = ClipData.newPlainText("toptop-link", "http://toptoptoptop.com/" + user.getUid());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(SettingsAndPrivacyActivity.this, "Profile link has been saved to clipboard", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

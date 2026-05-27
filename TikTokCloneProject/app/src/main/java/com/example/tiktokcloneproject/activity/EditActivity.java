@@ -73,8 +73,10 @@ public class EditActivity extends Activity implements View.OnClickListener {
 
         Intent intent = getIntent();
         Bundle bundle = intent.getExtras();
-        mode = bundle.getString("mode");
-        content = bundle.getString("content");
+        if (bundle != null) {
+            mode = bundle.getString("mode");
+            content = bundle.getString("content");
+        }
 
         validator = Validator.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -96,14 +98,13 @@ public class EditActivity extends Activity implements View.OnClickListener {
         {
             btnSave.setOnClickListener(this);
         }
-    }// on create
+    }
 
     @Override
     public void onClick(View view) {
 
         if(view.getId() == imbBack.getId()) {
-            Intent intent = new Intent(EditActivity.this, EditProfileActivity.class);
-            startActivity(intent);
+            // FIX: Không start lại EditProfileActivity, chỉ finish để quay về activity trước đó trong stack
             finish();
         }
 
@@ -128,8 +129,6 @@ public class EditActivity extends Activity implements View.OnClickListener {
                 updateBirthdate(inputValue);
             }
         }
-
-
     }
 
     private void handleUsername() {
@@ -153,7 +152,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
                 }
                 else {
                     layoutInput.setError("");
-                    if(content.equals(editable.toString())) {
+                    if(content != null && content.equals(editable.toString())) {
                         setEnableSave(false);
                     } else {
                         setEnableSave(true);
@@ -204,7 +203,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
                 }
                 else {
                     layoutInput.setError("");
-                    if(content.equals(editable.toString())) {
+                    if(content != null && content.equals(editable.toString())) {
                         setEnableSave(false);
                     } else {
                         setEnableSave(true);
@@ -240,26 +239,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
                     Log.d(TAG, "Profile username updated");
                     Toast.makeText(EditActivity.this, "Username updated successfully", Toast.LENGTH_SHORT).show();
                     handler.postDelayed(() -> {
-                        Intent intent = new Intent(EditActivity.this, EditProfileActivity.class);
-                        startActivity(intent);
-                        finish();
-                    }, 500);
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error updating profile username", e);
-                    Toast.makeText(EditActivity.this, "Failed to update profile", Toast.LENGTH_SHORT).show();
-                    setEnableSave(true);
-                });
-    }
-
-    private void updateProfileUsername(String username) {
-        DocumentReference profileDoc = db.collection("profiles").document(user.getUid());
-        profileDoc.update("username", username)
-                .addOnSuccessListener(aVoid -> {
-                    Log.d(TAG, "Profile username updated");
-                    handler.postDelayed(() -> {
-                        Intent intent = new Intent(EditActivity.this, EditProfileActivity.class);
-                        startActivity(intent);
+                        // FIX: Chỉ gọi finish() để quay lại trang EditProfile cũ
                         finish();
                     }, 500);
                 })
@@ -278,7 +258,6 @@ public class EditActivity extends Activity implements View.OnClickListener {
                     if (task.isSuccessful() && task.getResult() != null) {
                         boolean isTaken = false;
                         for (DocumentSnapshot doc : task.getResult()) {
-                            // Nếu tìm thấy user khác có cùng username thì đã bị trùng
                             if (!doc.getId().equals(user.getUid())) {
                                 isTaken = true;
                                 break;
@@ -312,8 +291,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
                                 Log.d(TAG, "Profile birthdate updated");
                                 Toast.makeText(EditActivity.this, "Birthdate updated successfully", Toast.LENGTH_SHORT).show();
                                 handler.postDelayed(() -> {
-                                    Intent intent = new Intent(EditActivity.this, EditProfileActivity.class);
-                                    startActivity(intent);
+                                    // FIX: Chỉ gọi finish()
                                     finish();
                                 }, 500);
                             })
@@ -337,4 +315,4 @@ public class EditActivity extends Activity implements View.OnClickListener {
         edtInput.setText(dateFormat.format(myCalendar.getTime()));
     }
 
-}//class
+}

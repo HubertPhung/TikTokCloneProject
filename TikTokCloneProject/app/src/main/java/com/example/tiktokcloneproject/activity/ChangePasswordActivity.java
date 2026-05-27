@@ -85,14 +85,6 @@ public class ChangePasswordActivity extends FragmentActivity implements View.OnC
         btnNewPassword.setOnClickListener(this);
     }
 
-    private void moveToAnotherActivity(Class<?> cls) {
-        Intent intent = new Intent(ChangePasswordActivity.this, cls);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
-    }
-
-
     private void setVisibleVisibility(Integer id) {
         llNewPassword.setVisibility(GONE);
         llOldPassword.setVisibility(GONE);
@@ -109,36 +101,18 @@ public class ChangePasswordActivity extends FragmentActivity implements View.OnC
             } else {
                 phone = user.getPhoneNumber();
                 if (phone == null || phone.isEmpty()) {
-                    Toast.makeText(this, getString(R.string.error_change_password_not_supported), Toast.LENGTH_SHORT).show();
+                    // Fallback to getting phone from Firestore if not in Auth
+                    db.collection("users").document(user.getUid()).get().addOnSuccessListener(documentSnapshot -> {
+                        String firestorePhone = documentSnapshot.getString("phone");
+                        if (firestorePhone != null) {
+                            verifyOldPassword(firestorePhone, password);
+                        } else {
+                            Toast.makeText(this, getString(R.string.error_change_password_not_supported), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                     return;
                 }
-
-                db.collection("users")
-                        .whereEqualTo("phone", phone)
-                        .whereEqualTo("password", password)
-                        .get().addOnCompleteListener(task -> {
-                            msg = "FALSE";
-                            if (task.isSuccessful()) {
-                                for (DocumentSnapshot document : task.getResult()) {
-                                    if (document.exists()) {
-                                        msg = "TRUE";
-                                        break;
-                                    }
-                                }
-
-                            } else {
-                                Log.d("TAG", "Error getting documents: ", task.getException());
-                            }
-
-                            if (msg.equals("TRUE")) {
-                                addShowHideListener(fragmentWaiting);
-                                setVisibleVisibility(llNewPassword.getId());
-                            } else {
-                                addShowHideListener(fragmentWaiting);
-                                Toast.makeText(this, getString(R.string.error_old_password), Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                addShowHideListener(fragmentWaiting);
+                verifyOldPassword(phone, password);
             }
         }
         if (view.getId() == btnNewPassword.getId()) {
@@ -149,23 +123,46 @@ public class ChangePasswordActivity extends FragmentActivity implements View.OnC
             } else if (!confirm.equals(newPassword)) {
                 Toast.makeText(this, getString(R.string.error_confirm), Toast.LENGTH_SHORT).show();
             } else {
-                db.collection("users").document(user.getUid()).update("password", newPassword);
-                Toast.makeText(this, getString(R.string.successful_changePassword), Toast.LENGTH_SHORT).show();
-                moveToAnotherActivity(AccountSettingActivity.class);
+                addShowHideListener(fragmentWaiting);
+                db.collection("users").document(user.getUid()).update("password", newPassword)
+                    .addOnSuccessListener(aVoid -> {
+                        addShowHideListener(fragmentWaiting);
+                        Toast.makeText(this, getString(R.string.successful_changePassword), Toast.LENGTH_SHORT).show();
+                        // FIX: Chỉ gọi finish() để quay về màn hình trước đó thay vì khởi tạo lại Activity mới
+                        finish();
+                    })
+                    .addOnFailureListener(e -> {
+                        addShowHideListener(fragmentWaiting);
+                        Toast.makeText(this, "Update failed", Toast.LENGTH_SHORT).show();
+                    });
             }
         }
     }
 
+    private void verifyOldPassword(String phoneNumber, String oldPassword) {
+        addShowHideListener(fragmentWaiting);
+        db.collection("users")
+                .whereEqualTo("phone", phoneNumber)
+                .whereEqualTo("password", oldPassword)
+                .get().addOnCompleteListener(task -> {
+                    addShowHideListener(fragmentWaiting);
+                    if (task.isSuccessful() && !task.getResult().isEmpty()) {
+                        setVisibleVisibility(llNewPassword.getId());
+                    } else {
+                        Toast.makeText(this, getString(R.string.error_old_password), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
     void addShowHideListener(final Fragment fragment) {
+        if (fragment == null) return;
         ft = fm.beginTransaction();
-        ft.setCustomAnimations(android.R.animator.fade_in,
-                android.R.animator.fade_out);
+        ft.setCustomAnimations(android.R.animator.fade_in, android.R.animator.fade_out);
         if (fragment.isHidden()) {
             ft.show(fragment);
         } else {
             ft.hide(fragment);
         }
         ft.commit();
-
     }
 }

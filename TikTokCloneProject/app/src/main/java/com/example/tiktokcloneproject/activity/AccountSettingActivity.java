@@ -38,9 +38,7 @@ public class AccountSettingActivity extends AppCompatActivity implements View.On
         imvBackToSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(AccountSettingActivity.this, SettingsAndPrivacyActivity.class);
-                startActivity(intent);
-
+                // FIX: Không start lại SettingsAndPrivacyActivity, chỉ finish để quay về
                 finish();
             }
         });

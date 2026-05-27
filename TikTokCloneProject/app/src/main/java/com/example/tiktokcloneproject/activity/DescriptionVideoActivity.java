@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
 import android.os.Build;
@@ -24,8 +25,10 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.cloudinary.android.MediaManager;
 import com.cloudinary.android.callback.ErrorInfo;
 import com.cloudinary.android.callback.UploadCallback;
@@ -37,7 +40,10 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -57,8 +63,9 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
     ImageView imvShortCutVideo, btnBack;
     ImageButton btnAiSuggest;
     ProgressBar pbAiLoading;
+    TextView tvTitleScreen;
 
-    final String REGEX_HASHTAG = "#([A-Za-z0-9_-]+)";
+    final String REGEX_HASHTAG = "#([A-Za-z0-9_\\u00C0-\\u1EF9-]+)";
     String username = "user";
     Uri videoUri;
     final long maximumDuration = 300000;
@@ -71,6 +78,10 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
     String Id;
     final String TAG = "DescriptionVideoActivity";
     Bitmap thumbnail;
+
+    boolean isEditMode = false;
+    String targetVideoId;
+    String currentThumbUrl;
 
     NotificationManagerCompat mNotifyManager;
     NotificationCompat.Builder mBuilder;
@@ -89,29 +100,31 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         btnAiSuggest = findViewById(R.id.btnAiSuggest);
         pbAiLoading = findViewById(R.id.pbAiLoading);
         btnAddHashtag = findViewById(R.id.btnAddHashtag);
+        tvTitleScreen = findViewById(R.id.tvTitleScreen);
 
         mAuth = FirebaseAuth.getInstance();
         user = mAuth.getCurrentUser();
         db = FirebaseFirestore.getInstance();
+        hashtags = new ArrayList<>();
 
         Intent intent = getIntent();
         if (intent != null) {
-            if (intent.getData() != null) {
-                videoUri = intent.getData();
-            } else if (intent.getExtras() != null) {
-                String videoPath = intent.getExtras().getString("videoUri");
-                if (videoPath != null) {
-                    videoUri = Uri.parse(videoPath);
+            isEditMode = intent.getBooleanExtra("isEditMode", false);
+            if (isEditMode) {
+                targetVideoId = intent.getStringExtra("videoId");
+                setupEditMode();
+            } else {
+                if (intent.getData() != null) {
+                    videoUri = intent.getData();
+                } else if (intent.getExtras() != null) {
+                    String videoPath = intent.getExtras().getString("videoUri");
+                    if (videoPath != null) videoUri = Uri.parse(videoPath);
                 }
-            }
-            if (videoUri != null) {
-                processVideoMetadata();
+                if (videoUri != null) processVideoMetadata();
             }
         }
         
-        hashtags = new ArrayList<>();
         createNotificationChannel();
-        
         mNotifyManager = NotificationManagerCompat.from(getApplicationContext());
         mBuilder = new NotificationCompat.Builder(getApplicationContext(), "Video_Upload_Channel")
                 .setContentTitle("Trạng thái tải lên")
@@ -124,6 +137,28 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         btnAiSuggest.setOnClickListener(this);
         if (btnAddHashtag != null) btnAddHashtag.setOnClickListener(this);
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
+    }
+
+    private void setupEditMode() {
+        if (tvTitleScreen != null) tvTitleScreen.setText("Sửa mô tả video");
+        btnDescription.setText("CẬP NHẬT");
+        
+        db.collection("videos").document(targetVideoId).get()
+            .addOnSuccessListener(doc -> {
+                if (doc.exists()) {
+                    String desc = doc.getString("description");
+                    edtDescription.setText(desc);
+                    String videoUrl = doc.getString("videoUri");
+                    
+                    if (videoUrl != null && !videoUrl.isEmpty()) {
+                        currentThumbUrl = videoUrl.replace(".mp4", ".jpg");
+                        if (currentThumbUrl.contains("/upload/")) {
+                            currentThumbUrl = currentThumbUrl.replace("/upload/", "/upload/so_0/");
+                        }
+                        Glide.with(this).load(currentThumbUrl).into(imvShortCutVideo);
+                    }
+                }
+            });
     }
 
     private void safeNotify() {
@@ -186,7 +221,8 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
     public void onClick(View view) {
         int viewId = view.getId();
         if (viewId == R.id.btnDescription) {
-            handlePostVideo();
+            if (isEditMode) handleUpdateVideo();
+            else handlePostVideo();
         } else if (viewId == R.id.btnAiSuggest) {
             handleAiSuggestion();
         } else if (viewId == R.id.btnAddHashtag) {
@@ -198,18 +234,20 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         String currentText = edtDescription.getText().toString();
         int cursorPosition = edtDescription.getSelectionStart();
         String hashtag = "#";
-        
-        // Thêm dấu cách trước # nếu chưa có và không phải ở đầu dòng
-        if (cursorPosition > 0 && currentText.charAt(cursorPosition - 1) != ' ') {
-            hashtag = " #";
-        }
-        
+        if (cursorPosition > 0 && currentText.charAt(cursorPosition - 1) != ' ') hashtag = " #";
         edtDescription.getText().insert(cursorPosition, hashtag);
         edtDescription.requestFocus();
     }
 
     private void handleAiSuggestion() {
-        if (thumbnail == null) {
+        Bitmap bitmapToAnalyze = thumbnail;
+        if (isEditMode && bitmapToAnalyze == null) {
+            if (imvShortCutVideo.getDrawable() instanceof BitmapDrawable) {
+                bitmapToAnalyze = ((BitmapDrawable) imvShortCutVideo.getDrawable()).getBitmap();
+            }
+        }
+
+        if (bitmapToAnalyze == null) {
             Toast.makeText(this, "Vui lòng đợi video tải xong", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -217,11 +255,9 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         runOnUiThread(() -> {
             btnAiSuggest.setVisibility(View.GONE);
             pbAiLoading.setVisibility(View.VISIBLE);
-            Toast.makeText(this, "AI đang tìm hashtag viral...", Toast.LENGTH_SHORT).show();
         });
 
-        ListenableFuture<GenerateContentResponse> future = GeminiHelper.suggestHashtags(thumbnail);
-        
+        ListenableFuture<GenerateContentResponse> future = GeminiHelper.suggestHashtags(bitmapToAnalyze);
         Futures.addCallback(future, new FutureCallback<GenerateContentResponse>() {
             @Override
             public void onSuccess(GenerateContentResponse result) {
@@ -229,9 +265,7 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                     String suggestion = result.getText();
                     if (suggestion != null) {
                         String currentText = edtDescription.getText().toString();
-                        if (!currentText.isEmpty() && !currentText.endsWith(" ")) {
-                            currentText += " ";
-                        }
+                        if (!currentText.isEmpty() && !currentText.endsWith(" ")) currentText += " ";
                         edtDescription.setText(currentText + suggestion);
                         edtDescription.setSelection(edtDescription.getText().length());
                     }
@@ -239,17 +273,59 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                     btnAiSuggest.setVisibility(View.VISIBLE);
                 });
             }
-
-            @Override
-            public void onFailure(Throwable t) {
+            @Override public void onFailure(Throwable t) {
                 runOnUiThread(() -> {
-                    Log.e(TAG, "AI Error: " + t.getMessage());
                     pbAiLoading.setVisibility(View.GONE);
                     btnAiSuggest.setVisibility(View.VISIBLE);
-                    Toast.makeText(DescriptionVideoActivity.this, "Không thể lấy gợi ý từ AI", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(DescriptionVideoActivity.this, "AI tạm thời không khả dụng", Toast.LENGTH_SHORT).show();
                 });
             }
         }, Executors.newSingleThreadExecutor());
+    }
+
+    private void handleUpdateVideo() {
+        final String newDescription = edtDescription.getText().toString().trim();
+        hashtags.clear();
+        Matcher matcher = Pattern.compile(REGEX_HASHTAG).matcher(newDescription);
+        while (matcher.find()) hashtags.add(matcher.group(1).toLowerCase());
+
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("description", newDescription);
+        updates.put("hashtags", hashtags);
+
+        db.collection("videos").document(targetVideoId)
+            .update(updates)
+            .addOnSuccessListener(aVoid -> {
+                // Đồng bộ sang các collection mirror để đảm bảo grid view cũng cập nhật
+                db.collection("video_summaries").document(targetVideoId).set(updates, SetOptions.merge());
+                if (user != null) {
+                    db.collection("profiles").document(user.getUid())
+                      .collection("public_videos").document(targetVideoId)
+                      .set(updates, SetOptions.merge());
+                }
+                
+                updateHashtagsCollection();
+                Toast.makeText(this, "Cập nhật thành công!", Toast.LENGTH_SHORT).show();
+                finish();
+            })
+            .addOnFailureListener(e -> Toast.makeText(this, "Lỗi cập nhật: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private void updateHashtagsCollection() {
+        db.collection("hashtags").whereEqualTo("videoId", targetVideoId).get()
+            .addOnSuccessListener(snapshots -> {
+                WriteBatch batch = db.batch();
+                for (DocumentSnapshot doc : snapshots) batch.delete(doc.getReference());
+                
+                for (String tag : hashtags) {
+                    Map<String, Object> h = new HashMap<>();
+                    h.put("hashtag", tag);
+                    h.put("videoId", targetVideoId);
+                    h.put("thumbnailUri", currentThumbUrl);
+                    batch.set(db.collection("hashtags").document(), h);
+                }
+                batch.commit();
+            });
     }
 
     private void handlePostVideo() {
@@ -291,9 +367,7 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                     is = getContentResolver().openInputStream(videoUri);
                 }
 
-                if (is == null) {
-                    throw new IOException("Cannot open input stream for video URI: " + videoUri);
-                }
+                if (is == null) throw new IOException("Cannot open input stream");
 
                 try (OutputStream os = new FileOutputStream(tempFile)) {
                     byte[] buffer = new byte[8192];
@@ -301,15 +375,6 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                     while ((length = is.read(buffer)) > 0) os.write(buffer, 0, length);
                 } finally {
                     try { is.close(); } catch (Exception ignored) {}
-                }
-
-                if (tempFile.length() > 100 * 1024 * 1024) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(appCtx, "File quá lớn (>100MB)", Toast.LENGTH_LONG).show();
-                        btnDescription.setEnabled(true);
-                    });
-                    tempFile.delete();
-                    return;
                 }
 
                 runOnUiThread(() -> {
@@ -339,25 +404,16 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                                 String videoUrl = (String) resultData.get("secure_url");
                                 saveDataToFirestore(videoUrl, description, currentUid, finalUsername);
                                 tempFile.delete(); 
-                                
-                                mBuilder.setContentTitle("Tải lên thành công")
-                                        .setContentText("Video của bạn đã sẵn sàng!")
-                                        .setProgress(0, 0, false)
-                                        .setOngoing(false);
+                                mBuilder.setContentTitle("Tải lên thành công").setContentText("Video của bạn đã sẵn sàng!").setProgress(0, 0, false).setOngoing(false);
                                 safeNotify();
                             }
 
                             @Override
                             public void onError(String requestId, ErrorInfo error) {
                                 tempFile.delete();
-                                String desc = error != null ? error.getDescription() : "Lỗi không xác định";
-                                mBuilder.setContentTitle("Tải lên thất bại")
-                                        .setContentText(desc)
-                                        .setProgress(0, 0, false)
-                                        .setOngoing(false);
+                                mBuilder.setContentTitle("Tải lên thất bại").setContentText(error != null ? error.getDescription() : "Lỗi").setProgress(0, 0, false).setOngoing(false);
                                 safeNotify();
                             }
-
                             @Override public void onReschedule(String requestId, ErrorInfo error) {}
                         }).dispatch();
 
@@ -370,12 +426,9 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
 
     private void saveDataToFirestore(String videoUrl, String description, String uid, String uName) {
         if (uid.isEmpty()) return;
-        
         Map<String, Object> videoData = new HashMap<>();
-        videoUrl = videoUrl != null ? videoUrl : "";
-        
         videoData.put("videoId", Id);
-        videoData.put("videoUri", videoUrl);
+        videoData.put("videoUri", videoUrl != null ? videoUrl : "");
         videoData.put("authorId", uid);
         videoData.put("username", uName);
         videoData.put("description", description);
@@ -383,17 +436,15 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         videoData.put("totalComments", 0);
         videoData.put("watchCount", 0);
         videoData.put("timestamp", System.currentTimeMillis());
-        videoData.put("moderationStatus", "pending"); // Chờ duyệt mặc định
+        videoData.put("moderationStatus", "pending");
         videoData.put("hashtags", hashtags);
 
         db.collection("videos").document(Id).set(videoData);
 
         String thumbUrl = "https://picsum.photos/200/300";
-        if (videoUrl.contains("cloudinary.com")) {
+        if (videoUrl != null && videoUrl.contains("cloudinary.com")) {
             thumbUrl = videoUrl.replace(".mp4", ".jpg");
-            if (thumbUrl.contains("/upload/")) {
-                thumbUrl = thumbUrl.replace("/upload/", "/upload/so_0/");
-            }
+            if (thumbUrl.contains("/upload/")) thumbUrl = thumbUrl.replace("/upload/", "/upload/so_0/");
         }
 
         Map<String, Object> summaryData = new HashMap<>();
@@ -406,9 +457,7 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
 
         for (String tag : hashtags) {
             Map<String, Object> h = new HashMap<>();
-            h.put("hashtag", tag); 
-            h.put("videoId", Id); 
-            h.put("thumbnailUri", thumbUrl);
+            h.put("hashtag", tag); h.put("videoId", Id); h.put("thumbnailUri", thumbUrl);
             db.collection("hashtags").add(h);
         }
     }

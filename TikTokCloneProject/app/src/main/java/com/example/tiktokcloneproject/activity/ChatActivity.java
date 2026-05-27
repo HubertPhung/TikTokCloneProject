@@ -48,6 +48,7 @@ public class ChatActivity extends AppCompatActivity {
 
     private String receiverId;
     private String receiverName;
+    private String receiverAvatar;
     private String roomId;
     private final String TAG = "ChatActivity";
 
@@ -58,6 +59,7 @@ public class ChatActivity extends AppCompatActivity {
 
         receiverId = getIntent().getStringExtra("receiver_id");
         receiverName = getIntent().getStringExtra("receiver_name");
+        receiverAvatar = getIntent().getStringExtra("receiver_avatar");
 
         if (receiverId == null) {
             Toast.makeText(this, "Không tìm thấy ID người nhận", Toast.LENGTH_SHORT).show();
@@ -84,26 +86,35 @@ public class ChatActivity extends AppCompatActivity {
         tvUserNameChat.setText(receiverName != null ? receiverName : "Người dùng");
         btnBackChat.setOnClickListener(v -> finish());
 
-        // Lấy thông tin avatar từ Firestore
+        // Khởi tạo Adapter
+        mChat = new ArrayList<>();
+        messageAdapter = new ChatAdapter(ChatActivity.this, mChat);
+        rvChat.setHasFixedSize(true);
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        linearLayoutManager.setStackFromEnd(true);
+        rvChat.setLayoutManager(linearLayoutManager);
+        rvChat.setAdapter(messageAdapter);
+
+        // Hiển thị ảnh đại diện ngay nếu đã có link từ Intent
+        if (receiverAvatar != null && !receiverAvatar.isEmpty()) {
+            Glide.with(this).load(receiverAvatar).placeholder(R.drawable.default_avatar).into(ivUserChat);
+            messageAdapter.setImageUrl(receiverAvatar);
+        }
+
+        // Tải lại thông tin mới nhất từ Firestore để đảm bảo ảnh luôn đúng
         FirebaseFirestore.getInstance().collection("profiles").document(receiverId).get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
                         String avatarUrl = doc.getString("avatarUrl");
                         if (avatarUrl != null && !avatarUrl.isEmpty()) {
                             Glide.with(this).load(avatarUrl).placeholder(R.drawable.default_avatar).into(ivUserChat);
-                            if (messageAdapter != null) messageAdapter.setImageUrl(avatarUrl);
+                            if (messageAdapter != null) {
+                                messageAdapter.setImageUrl(avatarUrl);
+                                messageAdapter.notifyDataSetChanged();
+                            }
                         }
                     }
                 });
-
-        rvChat.setHasFixedSize(true);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
-        linearLayoutManager.setStackFromEnd(true);
-        rvChat.setLayoutManager(linearLayoutManager);
-
-        mChat = new ArrayList<>();
-        messageAdapter = new ChatAdapter(ChatActivity.this, mChat);
-        rvChat.setAdapter(messageAdapter);
 
         btnSendMessage.setOnClickListener(v -> {
             String msg = etMessage.getText().toString().trim();
@@ -124,14 +135,12 @@ public class ChatActivity extends AppCompatActivity {
         DatabaseReference ref = FirebaseHelper.getDatabase().getReference();
         long timestamp = System.currentTimeMillis();
 
-        // 1. Lưu tin nhắn vào cuộc hội thoại
         String msgKey = ref.child("Chats").child(roomId).push().getKey();
         ChatMessage chatMessage = new ChatMessage(sender, receiver, message, timestamp, "text");
         
         Map<String, Object> messageValues = new HashMap<>();
         messageValues.put("/Chats/" + roomId + "/" + msgKey, chatMessage);
 
-        // 2. Cập nhật danh sách Inbox cho cả 2 người
         Map<String, Object> chatListData = new HashMap<>();
         chatListData.put("id", receiver);
         chatListData.put("lastMessage", message);
@@ -144,11 +153,9 @@ public class ChatActivity extends AppCompatActivity {
         chatListDataReceiver.put("timestamp", timestamp);
         messageValues.put("/ChatList/" + receiver + "/" + sender, chatListDataReceiver);
 
-        // Thực hiện cập nhật đồng loạt (Atomic update)
         ref.updateChildren(messageValues).addOnCompleteListener(task -> {
             if (!task.isSuccessful()) {
                 Log.e(TAG, "Gửi tin nhắn thất bại", task.getException());
-                Toast.makeText(ChatActivity.this, "Không thể gửi tin nhắn. Kiểm tra kết nối!", Toast.LENGTH_SHORT).show();
             }
         });
     }
