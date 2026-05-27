@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, HelpCircle, Moon, Sun, Menu, LogOut, Shield } from 'lucide-react';
+import { Moon, Sun, Menu, LogOut, Shield } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 import { useTheme } from '../theme-provider';
 import { useAuth } from '../auth-provider';
 
 interface TopHeaderProps {
   title?: string;
+  onMenuClick?: () => void;
 }
 
-export function TopHeader({ title }: TopHeaderProps) {
+export function TopHeader({ title, onMenuClick }: TopHeaderProps) {
   const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -29,14 +30,17 @@ export function TopHeader({ title }: TopHeaderProps) {
 
   const getRoleBadge = () => {
     if (!user) return null;
-    const colors = user.role === 'admin'
-      ? 'bg-primary/10 text-primary border-primary/20'
-      : 'bg-secondary-container/10 text-secondary-container border-secondary-container/20';
-    const label = user.role === 'admin' ? 'Admin' : 'Moderator';
+    const roleConfig: Record<string, { colors: string; label: string }> = {
+      admin: { colors: 'bg-primary/10 text-primary border-primary/20', label: 'Admin' },
+      moderator: { colors: 'bg-secondary-container/10 text-secondary-container border-secondary-container/20', label: 'Moderator' },
+      viewer: { colors: 'bg-tertiary/10 text-tertiary border-tertiary/20', label: 'Viewer' },
+    };
+    const config = roleConfig[user.role];
+    if (!config) return null;
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label text-[10px] font-bold border ${colors}`}>
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-label text-[10px] font-bold border ${config.colors}`}>
         <Shield className="w-3 h-3" />
-        {label}
+        {config.label}
       </span>
     );
   };
@@ -45,26 +49,18 @@ export function TopHeader({ title }: TopHeaderProps) {
     <header className="sticky top-0 z-30 w-full bg-surface/80 backdrop-blur-xl border-b border-outline-variant/20 shadow-sm transition-colors duration-200">
       <div className="flex justify-between items-center h-16 px-6">
         <div className="flex items-center gap-4 flex-1">
-          <button className="md:hidden text-on-surface-variant p-2 hover:bg-surface-highest/50 rounded-full transition-all">
+          <button
+            onClick={onMenuClick}
+            className="md:hidden text-on-surface-variant p-2 hover:bg-surface-highest/50 rounded-full transition-all"
+          >
             <Menu className="w-5 h-5" />
           </button>
-
-          <div className="hidden md:flex relative group w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm..."
-              className="w-full bg-surface-high border-b border-transparent focus:border-primary text-on-surface font-body text-sm pl-10 pr-4 py-2 outline-none transition-all placeholder:text-on-surface-variant/50 rounded-t-sm"
-            />
-          </div>
+          {title && <h2 className="hidden md:block font-headline text-lg font-semibold text-on-surface">{title}</h2>}
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 text-on-surface-variant">
             <NotificationBell />
-            <button className="hidden md:flex p-2 hover:bg-surface-highest/50 rounded-full transition-all hover:text-on-surface">
-              <HelpCircle className="w-5 h-5" />
-            </button>
             <button
               onClick={() => setTheme(isDark ? "light" : "dark")}
               className="p-2 hover:bg-surface-highest/50 rounded-full transition-all hover:text-on-surface"

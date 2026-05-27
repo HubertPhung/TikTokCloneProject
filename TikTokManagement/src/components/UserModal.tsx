@@ -37,7 +37,7 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
                 <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-primary font-headline text-3xl">
-                  {user.username.charAt(1).toUpperCase()}
+                  {user.username.charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
@@ -57,7 +57,7 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
                   {user.status === 'active' ? 'Hoạt động' : user.status === 'banned' ? 'Bị khóa' : 'Cảnh cáo'}
                 </span>
                 <span className="px-3 py-1 rounded-full text-xs font-label border bg-primary/10 text-primary border-primary/20">
-                  {user.role === 'admin' ? 'Quản trị viên' : user.role === 'moderator' ? 'Kiểm duyệt viên' : 'Người dùng'}
+                  {user.role === 'admin' ? 'Quản trị viên' : user.role === 'moderator' ? 'Kiểm duyệt viên' : user.role === 'viewer' ? 'Xem báo cáo' : 'Người dùng'}
                 </span>
               </div>
             </div>
@@ -131,6 +131,7 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
                   className="w-full bg-surface border border-outline-variant/20 text-on-surface font-label text-sm p-3 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                 >
                   <option value="user">Người dùng (User)</option>
+                  <option value="viewer">Xem báo cáo (Viewer)</option>
                   <option value="moderator">Kiểm duyệt viên (Moderator)</option>
                   <option value="admin">Quản trị viên (Admin)</option>
                 </select>

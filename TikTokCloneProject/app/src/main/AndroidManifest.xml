@@ -142,9 +142,7 @@
         <activity
             android:name=".activity.EmailLogInActivity"
             android:exported="false" />
-        <activity
-            android:name=".activity.LoginOptionsActivity"
-            android:exported="false" />
+
         <activity
             android:name=".activity.MainActivity"
             android:exported="false" />

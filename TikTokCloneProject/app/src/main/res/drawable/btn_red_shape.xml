@@ -3,14 +3,13 @@
     <item android:state_pressed="true">
         <shape>
             <solid android:color="@color/tiktok_red_50" />
-            <corners android:radius="3dp" />
-
+            <corners android:radius="25dp" />
         </shape>
     </item>
     <item>
         <shape>
             <solid android:color="@color/tiktok_red" />
-            <corners android:radius="3dp" />
+            <corners android:radius="25dp" />
         </shape>
     </item>
 </selector>

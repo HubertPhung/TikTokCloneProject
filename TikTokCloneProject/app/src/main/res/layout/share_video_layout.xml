@@ -2,51 +2,396 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="?attr/colorPrimary">
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_share_sheet"
+    android:paddingTop="16dp">
+
+    <!-- Header: Gửi đến (Send to Friends) -->
     <TextView
-        android:layout_marginTop="30dp"
+        android:id="@+id/tvSendToHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Share this video"
-        android:textSize="16dp"
-        android:textStyle="bold"
+        android:text="Gửi đến"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat_semibold"
         android:layout_gravity="center"
-        android:textColor="?attr/colorOnPrimary"
-        ></TextView>
+        android:textColor="#8A8A8E"
+        android:layout_marginBottom="12dp"
+        android:visibility="gone"/>
 
-    <LinearLayout
-        android:id="@+id/share_options"
-        android:orientation="vertical"
+    <!-- Row 1: Direct Friends List -->
+    <HorizontalScrollView
+        android:id="@+id/hsvFriends"
         android:layout_width="match_parent"
-        android:layout_height="130dp"
-        android:gravity="center">
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="8dp"
+        android:scrollbars="none"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone">
+        
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/llFriendsContainer"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:layout_marginTop="20dp">
-
-            <Button
-                android:id="@+id/btnCopyURL"
-                android:layout_width="130dp"
-                android:layout_height="wrap_content"
-                android:layout_margin="5dp"
-                style="@style/tiktok_button_red"
-                android:text="Copy URL"></Button>
-            <TextView
-                android:id="@+id/txvCancelInSharedPlace"
-                android:layout_width="150dp"
-                android:layout_height="40dp"
-                android:gravity="center"
-                android:layout_gravity="center"
-                android:text="Cancel"
-                android:textStyle="bold"
-                android:clickable="true"
-                android:textColor="?attr/colorOnPrimary"
-
-                ></TextView>
+            android:orientation="horizontal">
+            <!-- Dynamically populated in code -->
         </LinearLayout>
-    </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Divider between Friends and Apps -->
+    <View
+        android:id="@+id/vDividerFriends"
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginVertical="8dp"
+        android:visibility="gone"/>
+
+    <!-- Header: Chia sẻ lên (Share to Apps) -->
+    <TextView
+        android:id="@+id/tvShareToHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chia sẻ lên"
+        android:textSize="14sp"
+        android:fontFamily="@font/montserrat_semibold"
+        android:layout_gravity="center"
+        android:textColor="#8A8A8E"
+        android:layout_marginBottom="12dp"/>
+
+    <!-- Row 2: Sharing Destinations -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="8dp"
+        android:scrollbars="none"
+        android:layout_marginBottom="12dp">
+        
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            
+            <!-- Copy Link Option -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnCopyURL"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="14dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_copy_link"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#2F303B"
+                    android:contentDescription="Copy Link"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sao chép"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Zalo Option -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnShareZalo"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_zalo"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#0088FF"
+                    android:contentDescription="Share Zalo"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Zalo"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Messenger Option -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnShareMessenger"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_messenger"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#0084FF"
+                    android:contentDescription="Share Messenger"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Messenger"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Facebook Option -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnShareFacebook"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_facebook"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#1877F2"
+                    android:contentDescription="Share Facebook"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Facebook"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- System Share Option -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnShareSystem"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="14dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_more_dots"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#545560"
+                    android:contentDescription="Share Other"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Khác"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+            
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Divider between Apps and Actions -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#1AFFFFFF"
+        android:layout_marginVertical="8dp"/>
+
+    <!-- Row 3: Video Actions -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="8dp"
+        android:scrollbars="none"
+        android:layout_marginBottom="16dp">
+        
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            
+            <!-- Report Option -->
+            <LinearLayout
+                android:id="@+id/llActionReport"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnActionReport"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="15dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_report_flag"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#2F303B"
+                    android:contentDescription="Report Video"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Báo cáo"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Save Option -->
+            <LinearLayout
+                android:id="@+id/llActionSave"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp">
+                
+                <ImageButton
+                    android:id="@+id/btnActionSave"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="15dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_download"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#2F303B"
+                    android:contentDescription="Save Video"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Lưu video"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Edit Option (Owner Only) -->
+            <LinearLayout
+                android:id="@+id/llActionEdit"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:visibility="gone">
+                
+                <ImageButton
+                    android:id="@+id/btnActionEdit"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="15dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_edit_pencil"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#2F303B"
+                    android:contentDescription="Edit Description"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sửa mô tả"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+
+            <!-- Delete Option (Owner Only) -->
+            <LinearLayout
+                android:id="@+id/llActionDelete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:visibility="gone">
+                
+                <ImageButton
+                    android:id="@+id/btnActionDelete"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:padding="15dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_baseline_delete_24"
+                    android:background="@drawable/bg_circle_shape"
+                    android:backgroundTint="#2F303B"
+                    android:contentDescription="Delete Video"/>
+                
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Xóa video"
+                    android:textColor="#E5E5EA"
+                    android:textSize="11sp"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:gravity="center"/>
+            </LinearLayout>
+            
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Divider Separator -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#1AFFFFFF"/>
+
+    <!-- Cancel Button -->
+    <TextView
+        android:id="@+id/txvCancelInSharedPlace"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:gravity="center"
+        android:text="Hủy"
+        android:textSize="15sp"
+        android:fontFamily="@font/montserrat_semibold"
+        android:clickable="true"
+        android:textColor="@color/white"
+        android:background="?android:attr/selectableItemBackground"
+        android:focusable="true"/>
+
 </LinearLayout>

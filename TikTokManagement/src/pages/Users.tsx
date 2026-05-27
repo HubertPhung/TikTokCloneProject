@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../components/auth-provider';
 import {
   Download,
@@ -18,6 +18,8 @@ import { User, UserRole, UserStatus } from '../types';
 import { UserModal } from '../components/UserModal';
 import { db, collection, onSnapshot, doc, updateDoc } from '../lib/firebase';
 
+const PAGE_SIZE = 10;
+
 export function Users() {
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -25,14 +27,36 @@ export function Users() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Track selected user ID separately to avoid re-creating the listener
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    let usersList: User[] = [];
+    let profilesMap: Record<string, any> = {};
+
+    const mergeAndSet = () => {
+      const merged = usersList.map(u => {
+        const profile = profilesMap[u.userId] || {};
+        return {
+          ...u,
+          followers: profile.followers || 0,
+          following: profile.following || 0,
+          likes: profile.likes || 0,
+          avatarUrl: u.avatarUrl || profile.avatarUrl || '',
+          username: u.username || profile.username || 'Unknown',
+        };
+      });
+      setUsers(merged);
+    };
+
     // Listen to real-time updates from 'users' collection
-    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      const usersData: User[] = [];
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const uData: User[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        usersData.push({
+        uData.push({
           userId: doc.id,
           username: data.username || 'Unknown',
           avatarUrl: data.avatarUrl || '',
@@ -40,33 +64,56 @@ export function Users() {
           phone: data.phone || '',
           birthdate: data.birthdate || '',
           isPrivate: data.isPrivate || false,
-          followers: data.followers || 0,
-          following: data.following || 0,
-          likes: data.likes || 0,
+          followers: 0,
+          following: 0,
+          likes: 0,
           role: data.role || 'user',
           status: data.status || 'active',
           createdAt: data.createdAt || Date.now(),
         });
       });
-      setUsers(usersData);
-      
-      // Update selected user if currently open
-      if (selectedUser) {
-        const updatedSelected = usersData.find(u => u.userId === selectedUser.userId);
-        if (updatedSelected) {
-          setSelectedUser(updatedSelected);
-        }
-      }
+      usersList = uData;
+      mergeAndSet();
       setLoading(false);
     }, (error) => {
       console.error("Error fetching users: ", error);
       setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [selectedUser?.userId]);
+    // Listen to real-time updates from 'profiles' collection
+    const unsubProfiles = onSnapshot(collection(db, 'profiles'), (snapshot) => {
+      const pMap: Record<string, any> = {};
+      snapshot.forEach((doc) => {
+        pMap[doc.id] = doc.data();
+      });
+      profilesMap = pMap;
+      mergeAndSet();
+    }, (error) => {
+      console.error("Error fetching profiles: ", error);
+    });
+
+    return () => {
+      unsubUsers();
+      unsubProfiles();
+    };
+  }, []); // No dependency on selectedUser — stable listener
+
+  // Update selectedUser when users data changes
+  useEffect(() => {
+    if (selectedUserId) {
+      const updated = users.find(u => u.userId === selectedUserId);
+      if (updated) {
+        setSelectedUser(updated);
+      }
+    }
+  }, [users, selectedUserId]);
 
   const handleUpdateStatus = async (userId: string, newStatus: UserStatus) => {
+    // Confirm before ban
+    if (newStatus === 'banned') {
+      const confirmed = window.confirm('Bạn có chắc chắn muốn khóa tài khoản này? Người dùng sẽ không thể truy cập ứng dụng.');
+      if (!confirmed) return;
+    }
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
@@ -89,6 +136,27 @@ export function Users() {
       alert("Lỗi khi phân quyền!");
     }
   };
+
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const matchSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          user.userId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === 'all' || user.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [users, searchTerm, statusFilter]);
+
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
 
   const handleExportCSV = () => {
     if (filteredUsers.length === 0) {
@@ -147,12 +215,15 @@ export function Users() {
     URL.revokeObjectURL(url);
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        user.userId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = statusFilter === 'all' || user.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const openUserModal = (user: User) => {
+    setSelectedUserId(user.userId);
+    setSelectedUser(user);
+  };
+
+  const closeUserModal = () => {
+    setSelectedUserId(null);
+    setSelectedUser(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -203,9 +274,6 @@ export function Users() {
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
             </div>
-            <button className="p-2 border border-outline-variant/20 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors">
-              <RefreshCw className={clsx("w-5 h-5", loading && "animate-spin")} />
-            </button>
           </div>
         </div>
 
@@ -225,13 +293,16 @@ export function Users() {
             <tbody className="divide-y divide-outline-variant/10">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-on-surface-variant">Đang tải dữ liệu...</td>
+                  <td colSpan={6} className="py-8 text-center text-on-surface-variant">
+                    <RefreshCw className="w-5 h-5 animate-spin inline-block mr-2" />
+                    Đang tải dữ liệu...
+                  </td>
                 </tr>
-              ) : filteredUsers.length === 0 ? (
+              ) : paginatedUsers.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-on-surface-variant">Không tìm thấy người dùng nào.</td>
                 </tr>
-              ) : filteredUsers.map((user) => (
+              ) : paginatedUsers.map((user) => (
                 <tr key={user.userId} className="hover:bg-surface-high/30 transition-colors group">
                   <td className="py-4 px-6">
                     <div className={clsx("w-10 h-10 rounded-full bg-surface-high border border-outline-variant/20 overflow-hidden flex items-center justify-center font-bold text-primary", user.status === 'banned' && "grayscale opacity-70")}>
@@ -254,9 +325,10 @@ export function Users() {
                       "font-label text-xs px-2 py-1 rounded",
                       user.role === 'admin' ? "bg-primary/10 text-primary" : 
                       user.role === 'moderator' ? "bg-secondary-container/10 text-secondary-container" : 
+                      user.role === 'viewer' ? "bg-tertiary/10 text-tertiary" :
                       "text-on-surface-variant"
                     )}>
-                      {user.role === 'admin' ? 'Admin' : user.role === 'moderator' ? 'Moderator' : 'User'}
+                      {user.role === 'admin' ? 'Admin' : user.role === 'moderator' ? 'Moderator' : user.role === 'viewer' ? 'Viewer' : 'User'}
                     </span>
                   </td>
                   <td className="py-4 px-6">
@@ -286,7 +358,7 @@ export function Users() {
                   <td className="py-4 px-6 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
-                        onClick={() => setSelectedUser(user)}
+                        onClick={() => openUserModal(user)}
                         className="p-1.5 text-on-surface-variant hover:text-secondary-container hover:bg-secondary-container/10 rounded transition-colors" 
                         title="Xem chi tiết"
                       >
@@ -325,16 +397,48 @@ export function Users() {
         {/* Pagination */}
         <div className="p-6 border-t border-outline-variant/10 flex items-center justify-between bg-surface-lowest/50">
           <p className="font-label text-sm text-on-surface-variant">
-            Hiển thị 1 đến {filteredUsers.length} của {filteredUsers.length} người dùng
+            Hiển thị {((currentPage - 1) * PAGE_SIZE) + 1} đến {Math.min(currentPage * PAGE_SIZE, filteredUsers.length)} của {filteredUsers.length} người dùng
           </p>
           <div className="flex items-center gap-2">
-            <button className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50" disabled>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50"
+            >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-1 px-2">
-              <button className="w-8 h-8 rounded bg-primary-container/20 text-primary font-label text-sm font-bold flex items-center justify-center">1</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                .reduce<(number | 'ellipsis')[]>((acc, page, idx, arr) => {
+                  if (idx > 0 && page - (arr[idx - 1] as number) > 1) acc.push('ellipsis');
+                  acc.push(page);
+                  return acc;
+                }, [])
+                .map((item, idx) =>
+                  item === 'ellipsis' ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-on-surface-variant">…</span>
+                  ) : (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={clsx(
+                        "w-8 h-8 rounded font-label text-sm font-bold flex items-center justify-center",
+                        currentPage === item
+                          ? "bg-primary-container/20 text-primary"
+                          : "text-on-surface-variant hover:bg-surface-high"
+                      )}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
             </div>
-            <button className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50" disabled>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50"
+            >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -344,7 +448,7 @@ export function Users() {
       <UserModal 
         user={selectedUser} 
         isOpen={!!selectedUser} 
-        onClose={() => setSelectedUser(null)}
+        onClose={closeUserModal}
         onUpdateStatus={handleUpdateStatus}
         onUpdateRole={handleUpdateRole}
       />

@@ -1,56 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="15dp"
+    android:background="@color/tiktok_black"
     tools:context=".activity.EmailLogInActivity">
 
+    <!-- Back Button -->
     <ImageView
         android:id="@+id/btnBack"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_baseline_arrow_back_24"
-        android:padding="10dp"
-        android:contentDescription="Back" />
+        android:padding="16dp"
+        app:tint="@color/white"
+        android:contentDescription="Back"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"/>
 
+    <!-- Central Form Container -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
         android:gravity="center"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingHorizontal="32dp">
 
+        <!-- Logo -->
+        <ImageView
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/toptoplogo"
+            android:layout_marginBottom="24dp"
+            android:scaleType="fitCenter"/>
+
+        <!-- Title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/montserrat_bold"
+            android:text="Đăng nhập Email"
+            android:textColor="@color/white"
+            android:textSize="24sp"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Email Input -->
         <EditText
             android:id="@+id/edtEmail"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Enter your Email"
-            android:layout_marginBottom="10dp"
-            android:fontFamily="@font/montserrat_medium"/>
+            android:layout_height="50dp"
+            android:hint="Email"
+            android:textColorHint="#8A8A8E"
+            android:textColor="@color/white"
+            android:inputType="textEmailAddress"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/edt_shape"
+            android:fontFamily="@font/montserrat_medium"
+            android:textSize="15sp"/>
 
+        <!-- Password Input -->
         <EditText
             android:id="@+id/edtPassword"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Enter your Password"
+            android:layout_height="50dp"
+            android:hint="Mật khẩu"
+            android:textColorHint="#8A8A8E"
+            android:textColor="@color/white"
             android:inputType="textPassword"
-            android:layout_marginBottom="10dp"
-            android:fontFamily="@font/montserrat_medium"/>
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/edt_shape"
+            android:fontFamily="@font/montserrat_medium"
+            android:textSize="15sp"/>
 
+        <!-- Login Button -->
         <Button
             android:id="@+id/btnLogin"
-            style="@style/tiktok_button_red"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Đăng nhập" />
+            android:layout_height="50dp"
+            style="@style/tiktok_button_red"
+            android:text="Đăng nhập"
+            android:textColor="@color/black"
+            android:textSize="15sp"
+            android:textAllCaps="false"/>
 
+        <!-- Progress Bar -->
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:indeterminateTint="@color/tiktok_red"
             android:visibility="gone" />
+
     </LinearLayout>
-</LinearLayout>
+
+</RelativeLayout>

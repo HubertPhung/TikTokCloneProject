@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../components/auth-provider';
 import {
   Search,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { db, collection, onSnapshot, doc, updateDoc } from '../lib/firebase';
+import { formatTimeAgo } from '../lib/utils';
 import type { Report, ReportStatus } from '../types';
 
 export function Reports() {
@@ -28,6 +29,8 @@ export function Reports() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'reports'), (snapshot) => {
@@ -43,7 +46,7 @@ export function Reports() {
           details: d.details || '',
           appeal: d.appeal || '',
           status: d.status || 'pending',
-          createdAt: d.createdAt?.toMillis?.() || d.createdAt || Date.now(),
+          createdAt: d.timestamp?.toMillis?.() || d.timestamp || d.createdAt?.toMillis?.() || d.createdAt || Date.now(),
           handledBy: d.handledBy || '',
         });
       });
@@ -79,29 +82,29 @@ export function Reports() {
     }
   };
 
-  const filteredReports = reports.filter((r) => {
+  const filteredReports = useMemo(() => reports.filter((r) => {
     const matchSearch = r.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         r.targetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         r.reporterId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = statusFilter === 'all' || r.status === statusFilter;
     const matchType = typeFilter === 'all' || r.targetType === typeFilter;
     return matchSearch && matchStatus && matchType;
-  });
+  }), [reports, searchTerm, statusFilter, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / PAGE_SIZE));
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredReports.slice(start, start + PAGE_SIZE);
+  }, [filteredReports, currentPage, PAGE_SIZE]);
+
+  // Reset page on filter change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, typeFilter]);
 
   const pendingCount = reports.filter(r => r.status === 'pending').length;
   const resolvedCount = reports.filter(r => r.status === 'resolved').length;
   const dismissedCount = reports.filter(r => r.status === 'dismissed').length;
 
-  const formatTimeAgo = (ts: number) => {
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Vừa xong';
-    if (mins < 60) return `${mins}p trước`;
-    if (hours < 24) return `${hours}h trước`;
-    return `${days} ngày trước`;
-  };
+
 
   const getTargetIcon = (type: string) => {
     switch (type) {
@@ -207,11 +210,11 @@ export function Reports() {
                     Đang tải báo cáo...
                   </td>
                 </tr>
-              ) : filteredReports.length === 0 ? (
+              ) : paginatedReports.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-on-surface-variant">Không tìm thấy báo cáo nào.</td>
                 </tr>
-              ) : filteredReports.map((report) => {
+              ) : paginatedReports.map((report) => {
                 const TargetIcon = getTargetIcon(report.targetType);
                 return (
                   <tr key={report.id} className="hover:bg-surface-high/30 transition-colors group">
@@ -295,16 +298,37 @@ export function Reports() {
         {/* Pagination */}
         <div className="p-6 border-t border-outline-variant/10 flex items-center justify-between bg-surface-lowest/50">
           <p className="font-label text-sm text-on-surface-variant">
-            Hiển thị {filteredReports.length} của {reports.length} báo cáo
+            Hiển thị {((currentPage - 1) * PAGE_SIZE) + 1} đến {Math.min(currentPage * PAGE_SIZE, filteredReports.length)} của {filteredReports.length} báo cáo
           </p>
           <div className="flex items-center gap-2">
-            <button className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50" disabled>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50"
+            >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-1 px-2">
-              <button className="w-8 h-8 rounded bg-primary-container/20 text-primary font-label text-sm font-bold flex items-center justify-center">1</button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={clsx(
+                    "w-8 h-8 rounded font-label text-sm font-bold flex items-center justify-center",
+                    currentPage === page
+                      ? "bg-primary-container/20 text-primary"
+                      : "text-on-surface-variant hover:bg-surface-high"
+                  )}
+                >
+                  {page}
+                </button>
+              ))}
             </div>
-            <button className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50" disabled>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="p-1.5 rounded border border-outline-variant/20 text-on-surface-variant hover:bg-surface-high transition-colors disabled:opacity-50"
+            >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>

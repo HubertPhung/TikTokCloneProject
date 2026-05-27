@@ -22,12 +22,17 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.view.inputmethod.InputMethodManager;
+import java.util.Collections;
+import java.util.HashMap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 
+import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.adapters.CommentAdapter;
 import com.example.tiktokcloneproject.helper.StaticVariable;
@@ -73,6 +78,12 @@ public class CommentActivity extends Activity implements View.OnClickListener{
     int totalComments;
     CommentAdapter adapter;
 
+    private LinearLayout llReplyPreview;
+    private TextView txvReplyingTo;
+    private ImageView imvCancelReply;
+    private Comment replyingToComment = null;
+    private String replyingToUsername = null;
+
     Handler handler = new Handler(Looper.getMainLooper());
 
     ArrayList<Comment> comments;
@@ -106,6 +117,13 @@ public class CommentActivity extends Activity implements View.OnClickListener{
         comments = new ArrayList<>();
         adapter = new CommentAdapter(this, R.layout.layout_row_comment, comments);
         lvComment.setAdapter(adapter);
+
+        llReplyPreview = findViewById(R.id.llReplyPreview);
+        txvReplyingTo = findViewById(R.id.txvReplyingTo);
+        imvCancelReply = findViewById(R.id.imvCancelReply);
+        if (imvCancelReply != null) {
+            imvCancelReply.setOnClickListener(v -> cancelReply());
+        }
 
 
 
@@ -166,36 +184,51 @@ public class CommentActivity extends Activity implements View.OnClickListener{
                                     break;
                             }
                         }
+                        sortComments();
                         adapter.notifyDataSetChanged();
                     }
                 });
 
         if (user != null) {
             userId = user.getUid();
-            // ĐÃ SỬA: Xóa dấu / ở đầu path
-            StorageReference download = storageRef.child("user_avatars").child(userId.toString());
-
-            download.getBytes(StaticVariable.MAX_BYTES_AVATAR)
-                    .addOnSuccessListener(new OnSuccessListener<byte[]>() {
-                        @Override
-                        public void onSuccess(byte[] bytes) {
-                            bitmap = BitmapFactory.decodeByteArray(bytes, 0 , bytes.length);
-                            imvMyAvatarInComment.setImageBitmap(bitmap);
-                        }
-                    })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception e) {
-                            // Do nothing
-                        }
-                    });
+            loadCurrentUserAvatar(userId);
         }
         else
         {
             Intent intent1 = new Intent(CommentActivity.this, HomeScreenActivity.class);
             startActivity(intent1);
         }
+    }
 
+    private void loadCurrentUserAvatar(String uid) {
+        FirebaseFirestore.getInstance().collection("profiles").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    String avatarUrl = doc.getString("avatarUrl");
+                    if (avatarUrl != null && !avatarUrl.isEmpty()) {
+                        Glide.with(this)
+                                .load(avatarUrl)
+                                .placeholder(R.drawable.default_avatar)
+                                .circleCrop()
+                                .into(imvMyAvatarInComment);
+                    } else {
+                        loadAvatarFromStorage(uid);
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Load profile avatar failed: " + e.getMessage());
+                    loadAvatarFromStorage(uid);
+                });
+    }
+
+    private void loadAvatarFromStorage(String uid) {
+        StorageReference download = storageRef.child("user_avatars").child(uid);
+        download.getBytes(StaticVariable.MAX_BYTES_AVATAR)
+                .addOnSuccessListener(bytes -> {
+                    bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    imvMyAvatarInComment.setImageBitmap(bitmap);
+                })
+                .addOnFailureListener(e -> Log.e(TAG, "Load storage avatar failed: " + e.getMessage()));
     }
 
     private int findCommentIndex(String id) {
@@ -224,6 +257,10 @@ public class CommentActivity extends Activity implements View.OnClickListener{
             }
             String timeStamp = String.valueOf(System.currentTimeMillis());
             Comment comment = new Comment(timeStamp, videoId, userId, cmt);
+            if (replyingToComment != null) {
+                comment.setParentId(replyingToComment.getCommentId());
+                comment.setParentUsername(replyingToUsername);
+            }
             postComment(comment);
             edtComment.setText("");
         }
@@ -235,13 +272,78 @@ public class CommentActivity extends Activity implements View.OnClickListener{
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()){
                     Notification.pushNotification(username, authorVideoId, StaticVariable.COMMENT);
+                    
+                    if (comment.getParentId() != null && !comment.getParentId().isEmpty() && replyingToComment != null) {
+                        db.collection("comments").document(comment.getParentId())
+                                .update("totalReplies", FieldValue.increment(1),
+                                        "replyIds", FieldValue.arrayUnion(comment.getCommentId()));
+                        if (!comment.getAuthorId().equals(replyingToComment.getAuthorId())) {
+                            Notification.pushNotification(username, replyingToComment.getAuthorId(), StaticVariable.COMMENT);
+                        }
+                    }
+                    
                     handler.post(CommentActivity.this::updateTotal);
+                    cancelReply();
                 }
                 else{
                     Toast.makeText(CommentActivity.this, "Comment fail!", Toast.LENGTH_SHORT).show();
                 }
             }
         });
+    }
+
+    public void startReply(Comment comment, String authorUsername) {
+        this.replyingToComment = comment;
+        this.replyingToUsername = authorUsername;
+        if (llReplyPreview != null) llReplyPreview.setVisibility(View.VISIBLE);
+        if (txvReplyingTo != null) txvReplyingTo.setText("Đang phản hồi @" + authorUsername + "...");
+        if (edtComment != null) {
+            edtComment.setHint("Phản hồi @" + authorUsername + "...");
+            edtComment.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(edtComment, 0);
+            }
+        }
+    }
+
+    public void cancelReply() {
+        this.replyingToComment = null;
+        this.replyingToUsername = null;
+        if (llReplyPreview != null) llReplyPreview.setVisibility(View.GONE);
+        if (edtComment != null) edtComment.setHint("Add comment...");
+    }
+
+    private void sortComments() {
+        ArrayList<Comment> parents = new ArrayList<>();
+        HashMap<String, ArrayList<Comment>> repliesMap = new HashMap<>();
+        
+        for (Comment c : comments) {
+            if (c.getParentId() == null || c.getParentId().isEmpty()) {
+                parents.add(c);
+            } else {
+                String pId = c.getParentId();
+                if (!repliesMap.containsKey(pId)) {
+                    repliesMap.put(pId, new ArrayList<>());
+                }
+                repliesMap.get(pId).add(c);
+            }
+        }
+        
+        Collections.sort(parents, (c1, c2) -> Long.compare(Long.parseLong(c2.getCommentId()), Long.parseLong(c1.getCommentId())));
+        
+        ArrayList<Comment> sorted = new ArrayList<>();
+        for (Comment parent : parents) {
+            sorted.add(parent);
+            ArrayList<Comment> replies = repliesMap.get(parent.getCommentId());
+            if (replies != null) {
+                Collections.sort(replies, (c1, c2) -> Long.compare(Long.parseLong(c1.getCommentId()), Long.parseLong(c2.getCommentId())));
+                sorted.addAll(replies);
+            }
+        }
+        
+        comments.clear();
+        comments.addAll(sorted);
     }
 
     private void updateTotal() {

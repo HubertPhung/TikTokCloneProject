@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../components/auth-provider';
 import { Play, AlertTriangle, Flag, Trash2, Check, RefreshCw, X, BrainCircuit, Loader2, Sparkles, ShieldAlert, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { db, collection, onSnapshot, doc, updateDoc, addDoc, Timestamp } from '../lib/firebase';
 import { moderateVideoContent } from '../lib/gemini';
+import { formatTimeAgo } from '../lib/utils';
 import type { Video } from '../types';
 import type { AIModerationResult } from '../lib/gemini';
 
@@ -24,7 +25,45 @@ export function Moderation() {
   const [scanningId, setScanningId] = useState<string | null>(null);
   const [scanningAll, setScanningAll] = useState(false);
   const [aiResults, setAiResults] = useState<Map<string, AIModerationResult>>(new Map());
-  const [autoScanningIds, setAutoScanningIds] = useState<Set<string>>(new Set());
+  const autoScanningIdsRef = useRef<Set<string>>(new Set());
+
+  // Shared AI moderation helper — eliminates triplicate code
+  const moderateAndUpdate = useCallback(async (video: Video): Promise<AIModerationResult | null> => {
+    try {
+      const result = await moderateVideoContent(video.description, video.username);
+      setAiResults((prev) => new Map(prev).set(video.videoId, result));
+
+      const updatePayload: Record<string, unknown> = {
+        aiFlagged: result.isViolation,
+        aiConfidence: result.confidence,
+        aiReviewed: true,
+      };
+
+      if (!result.isViolation) {
+        updatePayload.moderationStatus = 'approved';
+        updatePayload.reviewedBy = 'AI_AUTO';
+      }
+
+      await updateDoc(doc(db, 'videos', video.videoId), updatePayload);
+
+      if (!result.isViolation) {
+        await addDoc(collection(db, 'audit_logs'), {
+          adminId: 'AI_AUTO',
+          action: 'AUTO_APPROVE_VIDEO',
+          targetId: video.videoId,
+          details: {
+            confidence: result.confidence,
+            reason: result.reason || 'AI đánh giá nội dung an toàn',
+          },
+          createdAt: Timestamp.now(),
+        });
+      }
+      return result;
+    } catch (err) {
+      console.error('AI moderation error for', video.videoId, err);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'videos'), (snapshot) => {
@@ -57,66 +96,26 @@ export function Moderation() {
     return () => unsubscribe();
   }, []);
 
+  // Auto-scan pending unreviewed videos (uses ref to avoid infinite loop)
   useEffect(() => {
     const pendingUnreviewedVideos = videos.filter(
-      (video) => video.moderationStatus === 'pending' && !video.aiReviewed && !autoScanningIds.has(video.videoId),
+      (video) => video.moderationStatus === 'pending' && !video.aiReviewed && !autoScanningIdsRef.current.has(video.videoId),
     );
 
-    if (pendingUnreviewedVideos.length === 0) {
-      return;
-    }
+    if (pendingUnreviewedVideos.length === 0) return;
 
-    setAutoScanningIds((prev) => {
-      const next = new Set(prev);
-      pendingUnreviewedVideos.forEach((video) => next.add(video.videoId));
-      return next;
-    });
+    // Mark as scanning in ref (not state) to avoid re-trigger
+    pendingUnreviewedVideos.forEach((video) => autoScanningIdsRef.current.add(video.videoId));
 
     const runAutoModeration = async () => {
       for (const video of pendingUnreviewedVideos) {
-        try {
-          const result = await moderateVideoContent(video.description, video.username);
-          setAiResults((prev) => new Map(prev).set(video.videoId, result));
-
-          const updatePayload: Record<string, unknown> = {
-            aiFlagged: result.isViolation,
-            aiConfidence: result.confidence,
-            aiReviewed: true,
-          };
-
-          if (!result.isViolation) {
-            updatePayload.moderationStatus = 'approved';
-            updatePayload.reviewedBy = 'AI_AUTO';
-          }
-
-          await updateDoc(doc(db, 'videos', video.videoId), updatePayload);
-
-          if (!result.isViolation) {
-            await addDoc(collection(db, 'audit_logs'), {
-              adminId: 'AI_AUTO',
-              action: 'AUTO_APPROVE_VIDEO',
-              targetId: video.videoId,
-              details: {
-                confidence: result.confidence,
-                reason: result.reason || 'AI đánh giá nội dung an toàn',
-              },
-              createdAt: Timestamp.now(),
-            });
-          }
-        } catch (err) {
-          console.error('Auto moderation error for', video.videoId, err);
-        } finally {
-          setAutoScanningIds((prev) => {
-            const next = new Set(prev);
-            next.delete(video.videoId);
-            return next;
-          });
-        }
+        await moderateAndUpdate(video);
+        autoScanningIdsRef.current.delete(video.videoId);
       }
     };
 
     void runAutoModeration();
-  }, [autoScanningIds, videos]);
+  }, [videos, moderateAndUpdate]);
 
   const handleApprove = async (videoId: string) => {
     try {
@@ -163,41 +162,8 @@ export function Moderation() {
   // --- AI Moderation ---
   const handleAIScan = async (video: Video) => {
     setScanningId(video.videoId);
-    try {
-      const result = await moderateVideoContent(video.description, video.username);
-      setAiResults((prev) => new Map(prev).set(video.videoId, result));
-
-      const updatePayload: Record<string, unknown> = {
-        aiFlagged: result.isViolation,
-        aiConfidence: result.confidence,
-        aiReviewed: true,
-      };
-
-      // Auto-approve only when AI marks content as safe.
-      if (!result.isViolation) {
-        updatePayload.moderationStatus = 'approved';
-        updatePayload.reviewedBy = 'AI_AUTO';
-      }
-
-      await updateDoc(doc(db, 'videos', video.videoId), updatePayload);
-
-      if (!result.isViolation) {
-        await addDoc(collection(db, 'audit_logs'), {
-          adminId: 'AI_AUTO',
-          action: 'AUTO_APPROVE_VIDEO',
-          targetId: video.videoId,
-          details: {
-            confidence: result.confidence,
-            reason: result.reason || 'AI đánh giá nội dung an toàn',
-          },
-          createdAt: Timestamp.now(),
-        });
-      }
-    } catch (err) {
-      console.error('AI scan error:', err);
-    } finally {
-      setScanningId(null);
-    }
+    await moderateAndUpdate(video);
+    setScanningId(null);
   };
 
   const handleAIScanAll = async () => {
@@ -206,41 +172,9 @@ export function Moderation() {
 
     setScanningAll(true);
     for (const video of pendingVideos) {
-      try {
-        const result = await moderateVideoContent(video.description, video.username);
-        setAiResults((prev) => new Map(prev).set(video.videoId, result));
-
-        const updatePayload: Record<string, unknown> = {
-          aiFlagged: result.isViolation,
-          aiConfidence: result.confidence,
-          aiReviewed: true,
-        };
-
-        if (!result.isViolation) {
-          updatePayload.moderationStatus = 'approved';
-          updatePayload.reviewedBy = 'AI_AUTO';
-        }
-
-        await updateDoc(doc(db, 'videos', video.videoId), updatePayload);
-
-        if (!result.isViolation) {
-          await addDoc(collection(db, 'audit_logs'), {
-            adminId: 'AI_AUTO',
-            action: 'AUTO_APPROVE_VIDEO',
-            targetId: video.videoId,
-            details: {
-              confidence: result.confidence,
-              reason: result.reason || 'AI đánh giá nội dung an toàn',
-            },
-            createdAt: Timestamp.now(),
-          });
-        }
-
-        // Delay to avoid rate limiting
-        await new Promise((r) => setTimeout(r, 800));
-      } catch (err) {
-        console.error('AI scan error for', video.videoId, err);
-      }
+      await moderateAndUpdate(video);
+      // Delay to avoid rate limiting
+      await new Promise((r) => setTimeout(r, 800));
     }
     setScanningAll(false);
   };
@@ -250,16 +184,7 @@ export function Moderation() {
   const approvedCount = videos.filter((v) => v.moderationStatus === 'approved').length;
   const rejectedCount = videos.filter((v) => v.moderationStatus === 'rejected').length;
 
-  const formatTimeAgo = (ts: number) => {
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Vừa xong';
-    if (mins < 60) return `${mins}p trước`;
-    if (hours < 24) return `${hours}h trước`;
-    return `${days} ngày trước`;
-  };
+
 
   return (
     <div className="space-y-6">
@@ -349,8 +274,22 @@ export function Moderation() {
                       className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-300"
                       muted
                       preload="metadata"
-                      onMouseEnter={(e) => (e.target as HTMLVideoElement).play().catch(() => { })}
-                      onMouseLeave={(e) => { const v = e.target as HTMLVideoElement; v.pause(); v.currentTime = 0; }}
+                      onMouseEnter={(e) => {
+                        const v = e.target as HTMLVideoElement;
+                        v.play().catch(() => { });
+                        // Auto-pause after 3 seconds to save resources
+                        const timeoutId = setTimeout(() => { v.pause(); }, 3000);
+                        (v as any)._hoverTimeout = timeoutId;
+                      }}
+                      onMouseLeave={(e) => {
+                        const v = e.target as HTMLVideoElement;
+                        if ((v as any)._hoverTimeout) {
+                          clearTimeout((v as any)._hoverTimeout);
+                          (v as any)._hoverTimeout = null;
+                        }
+                        v.pause();
+                        v.currentTime = 0;
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-surface-high">

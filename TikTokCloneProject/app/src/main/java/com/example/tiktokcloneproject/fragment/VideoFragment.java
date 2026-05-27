@@ -221,5 +221,8 @@ public class VideoFragment extends Fragment {
             videoListener.remove();
             videoListener = null;
         }
+        if (videoAdapter != null) {
+            videoAdapter.releasePlayer();
+        }
     }
 }

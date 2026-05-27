@@ -1,30 +1,39 @@
 import { useState, useEffect } from 'react';
-import { Users, Video, Eye, CircleSlash, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Users, Video, Eye, CircleSlash, AlertTriangle, RefreshCw } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { db, collection, onSnapshot, query, orderBy, limit, where, getCountFromServer } from '../lib/firebase';
+import { db, collection, onSnapshot, getCountFromServer } from '../lib/firebase';
+import { formatTimeAgo, formatNumber } from '../lib/utils';
 import type { Report } from '../types';
 
-export function Dashboard() {
+interface DashboardProps {
+  onNavigate: (tab: string) => void;
+}
+
+export function Dashboard({ onNavigate }: DashboardProps) {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalVideos, setTotalVideos] = useState(0);
+  const [totalReports, setTotalReports] = useState(0);
   const [pendingReports, setPendingReports] = useState(0);
   const [recentReports, setRecentReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Count total users
-    const usersRef = collection(db, 'users');
-    const unsubUsers = onSnapshot(usersRef, (snapshot) => {
-      setTotalUsers(snapshot.size);
-    });
+    // Count total users efficiently with getCountFromServer
+    const fetchCounts = async () => {
+      try {
+        const [usersCount, videosCount] = await Promise.all([
+          getCountFromServer(collection(db, 'users')),
+          getCountFromServer(collection(db, 'videos')),
+        ]);
+        setTotalUsers(usersCount.data().count);
+        setTotalVideos(videosCount.data().count);
+      } catch (err) {
+        console.error('Error fetching counts:', err);
+      }
+    };
+    fetchCounts();
 
-    // Count total videos
-    const videosRef = collection(db, 'videos');
-    const unsubVideos = onSnapshot(videosRef, (snapshot) => {
-      setTotalVideos(snapshot.size);
-    });
-
-    // Count pending reports
+    // Listen to reports for real-time updates (reports are usually small collection)
     const reportsRef = collection(db, 'reports');
     const unsubReports = onSnapshot(reportsRef, (snapshot) => {
       let pending = 0;
@@ -40,11 +49,12 @@ export function Dashboard() {
           reason: data.reason || '',
           details: data.details || '',
           status: data.status || 'pending',
-          createdAt: data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
+          createdAt: data.timestamp?.toMillis?.() || data.timestamp || data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
           handledBy: data.handledBy || '',
         });
       });
       setPendingReports(pending);
+      setTotalReports(snapshot.size);
       // Sort newest first and take 5
       reports.sort((a, b) => b.createdAt - a.createdAt);
       setRecentReports(reports.slice(0, 5));
@@ -52,29 +62,9 @@ export function Dashboard() {
     });
 
     return () => {
-      unsubUsers();
-      unsubVideos();
       unsubReports();
     };
   }, []);
-
-  const formatNumber = (n: number) => {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'k';
-    return n.toString();
-  };
-
-  const formatTimeAgo = (timestamp: number) => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Vừa xong';
-    if (mins < 60) return `${mins}p trước`;
-    if (hours < 24) return `${hours}h trước`;
-    return `${days}d trước`;
-  };
 
   const getReportColor = (reason: string) => {
     const lower = reason.toLowerCase();
@@ -144,7 +134,7 @@ export function Dashboard() {
             <div>
               <h3 className="font-label text-xs text-on-surface-variant uppercase tracking-wider">Tổng báo cáo</h3>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="font-headline text-4xl font-bold text-on-surface">{loading ? '...' : formatNumber(recentReports.length)}</span>
+                <span className="font-headline text-4xl font-bold text-on-surface">{loading ? '...' : formatNumber(totalReports)}</span>
               </div>
             </div>
             <div className="p-2 bg-surface rounded-lg text-tertiary">
@@ -269,7 +259,12 @@ export function Dashboard() {
             )}
           </div>
           <div className="p-4 text-center border-t border-outline-variant/10">
-            <a href="#" className="font-label text-sm text-primary hover:underline">Xem tất cả báo cáo</a>
+            <button
+              onClick={() => onNavigate('reports')}
+              className="font-label text-sm text-primary hover:underline"
+            >
+              Xem tất cả báo cáo
+            </button>
           </div>
         </div>
       </div>

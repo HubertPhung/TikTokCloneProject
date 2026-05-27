@@ -1,1 +1,3 @@
 /build
+# Uncomment the line below to ignore firebase credentials if this is a public repository
+# google-services.json

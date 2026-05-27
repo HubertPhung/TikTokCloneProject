@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../components/auth-provider';
-import { Filter, Download, Lock, Trash2, ShieldAlert, Eye, ShieldCheck, ChevronLeft, ChevronRight, RefreshCw, CheckCircle, Video, UserX, X } from 'lucide-react';
+import { Download, Lock, Trash2, ShieldAlert, Eye, ShieldCheck, ChevronLeft, ChevronRight, RefreshCw, CheckCircle, Video, UserX, X } from 'lucide-react';
 import { clsx } from 'clsx';
 import { db, collection, onSnapshot, doc, updateDoc, addDoc, query, orderBy, Timestamp, getDocs, where } from '../lib/firebase';
 import type { AuditLog } from '../types';
@@ -185,9 +185,6 @@ export function Settings() {
           <div className="flex justify-between items-end mb-2">
             <h3 className="font-headline text-2xl font-semibold text-on-surface">Audit Logs</h3>
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-3 py-1.5 bg-surface-low border border-outline-variant/20 rounded-md font-label text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-colors">
-                <Filter className="w-4 h-4" /> Lọc
-              </button>
               <button 
                 onClick={handleExportAuditCSV}
                 className="flex items-center gap-2 px-3 py-1.5 bg-surface-low border border-outline-variant/20 rounded-md font-label text-sm text-on-surface-variant hover:text-on-surface hover:bg-surface-high transition-colors"

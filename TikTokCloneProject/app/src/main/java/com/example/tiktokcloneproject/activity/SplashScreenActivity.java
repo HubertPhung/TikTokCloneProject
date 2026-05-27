@@ -7,6 +7,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.example.tiktokcloneproject.R;
+
 public class SplashScreenActivity extends Activity {
 
     private final int SPLASH_DISPLAY_LENGTH = 2000;
@@ -14,8 +16,7 @@ public class SplashScreenActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Có thể set layout nếu có file res/layout/activity_splash_screen.xml
-        // setContentView(R.layout.activity_splash_screen);
+        setContentView(R.layout.activity_splash_screen);
 
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable(){
             @Override

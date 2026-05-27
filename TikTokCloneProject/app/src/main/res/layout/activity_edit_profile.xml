@@ -4,27 +4,28 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@color/dark_background"
     tools:context=".activity.EditProfileActivity">
 
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/white">
+        android:background="@color/dark_surface">
 
         <ImageView
             android:id="@+id/imvBackToProfile"
             android:layout_width="30dp"
             android:layout_height="30dp"
-            android:src="@drawable/ic_back" />
+            android:src="@drawable/ic_back"
+            app:tint="@color/dark_text_primary" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:text="Edit profile"
-            android:textColor="@color/black"
+            android:textColor="@color/dark_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -44,7 +45,8 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/toolbar">
+        android:layout_below="@id/toolbar"
+        android:background="@color/dark_background">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -69,7 +71,8 @@
                     android:layout_height="40dp"
                     android:layout_gravity="center"
                     android:alpha="0.5"
-                    android:src="@drawable/ic_camera" />
+                    android:src="@drawable/ic_camera"
+                    app:tint="@color/dark_text_secondary" />
             </FrameLayout>
 
             <TextView
@@ -78,7 +81,7 @@
                 android:layout_gravity="center"
                 android:layout_marginTop="12dp"
                 android:text="Tap to change photo"
-                android:textColor="#8A8A8E"
+                android:textColor="@color/dark_text_secondary"
                 android:textSize="14sp" />
 
             <LinearLayout
@@ -98,7 +101,7 @@
                         android:layout_height="wrap_content"
                         android:layout_centerVertical="true"
                         android:text="Username"
-                        android:textColor="@color/black"
+                        android:textColor="@color/dark_text_primary"
                         android:textSize="16sp" />
                     <TextView
                         android:id="@+id/tvUsername"
@@ -108,17 +111,18 @@
                         android:layout_marginEnd="10dp"
                         android:layout_toStartOf="@id/imbUsername"
                         android:text="user"
-                        android:textColor="#8A8A8E" />
+                        android:textColor="@color/dark_text_secondary" />
                     <ImageView
                         android:id="@+id/imbUsername"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_alignParentEnd="true"
                         android:layout_centerVertical="true"
-                        android:src="@drawable/ic_next" />
+                        android:src="@drawable/ic_next"
+                        app:tint="@color/dark_text_secondary" />
                 </RelativeLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E5E5EA" />
+                <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="@color/dark_divider" />
 
                 <LinearLayout
                     android:id="@+id/llEmail"
@@ -131,17 +135,17 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Email"
-                        android:textColor="@color/black"
+                        android:textColor="@color/dark_text_primary"
                         android:textSize="16sp" />
                     <TextView
                         android:id="@+id/tvEmail"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="email@gmail.com"
-                        android:textColor="#8A8A8E" />
+                        android:textColor="@color/dark_text_secondary" />
                 </LinearLayout>
 
-                <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#E5E5EA" />
+                <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="@color/dark_divider" />
 
                 <RelativeLayout
                     android:id="@+id/rlBirthdate"
@@ -154,7 +158,7 @@
                         android:layout_height="wrap_content"
                         android:layout_centerVertical="true"
                         android:text="Birthdate"
-                        android:textColor="@color/black"
+                        android:textColor="@color/dark_text_primary"
                         android:textSize="16sp" />
                     <TextView
                         android:id="@+id/tvBirthdate"
@@ -164,14 +168,15 @@
                         android:layout_marginEnd="10dp"
                         android:layout_toStartOf="@id/imbBirthdate"
                         android:text="01/01/2000"
-                        android:textColor="#8A8A8E" />
+                        android:textColor="@color/dark_text_secondary" />
                     <ImageView
                         android:id="@+id/imbBirthdate"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_alignParentEnd="true"
                         android:layout_centerVertical="true"
-                        android:src="@drawable/ic_next" />
+                        android:src="@drawable/ic_next"
+                        app:tint="@color/dark_text_secondary" />
                 </RelativeLayout>
             </LinearLayout>
         </LinearLayout>

@@ -79,6 +79,8 @@ public class NotificationAdapter extends ArrayAdapter<Notification> {
                 return context.getString(R.string.template_follow);
             case StaticVariable.LIKE:
                 return context.getString(R.string.template_like);
+            case StaticVariable.CHAT:
+                return context.getString(R.string.template_chat);
         }
         return "";
     }

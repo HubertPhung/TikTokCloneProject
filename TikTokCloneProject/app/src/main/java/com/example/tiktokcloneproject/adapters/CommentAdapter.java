@@ -48,6 +48,7 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
         TextView tvContent;
         ImageView imvLike;
         TextView tvTotalLikes;
+        TextView tvReplyButton;
     }
 
     @NonNull
@@ -62,6 +63,7 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
             holder.tvContent = convertView.findViewById(R.id.txvComment);
             holder.imvLike = convertView.findViewById(R.id.imvLikeInComment);
             holder.tvTotalLikes = convertView.findViewById(R.id.txvTotalLikeComment);
+            holder.tvReplyButton = convertView.findViewById(R.id.txvReplyButton);
             convertView.setTag(holder);
         } else {
             holder = (ViewHolder) convertView.getTag();
@@ -73,7 +75,33 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
         String commentId = comment.getCommentId();
 
         // 1. Init UI with data from model
-        holder.tvContent.setText(comment.getContent());
+        if (comment.getParentId() != null && !comment.getParentId().isEmpty() && comment.getParentUsername() != null) {
+            String text = "Phản hồi @" + comment.getParentUsername() + ": " + comment.getContent();
+            android.text.SpannableString ss = new android.text.SpannableString(text);
+            int start = 8; 
+            int end = start + comment.getParentUsername().length() + 1; 
+            ss.setSpan(new android.text.style.ForegroundColorSpan(Color.parseColor("#3D85C6")), start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            holder.tvContent.setText(ss);
+            
+            int padding8 = (int) (8 * context.getResources().getDisplayMetrics().density);
+            int padding48 = (int) (48 * context.getResources().getDisplayMetrics().density);
+            convertView.setPadding(padding48, padding8, padding8, padding8);
+            
+            ViewGroup.LayoutParams params = holder.imvAvatar.getLayoutParams();
+            params.width = (int) (28 * context.getResources().getDisplayMetrics().density);
+            params.height = (int) (28 * context.getResources().getDisplayMetrics().density);
+            holder.imvAvatar.setLayoutParams(params);
+        } else {
+            holder.tvContent.setText(comment.getContent());
+            
+            int padding8 = (int) (8 * context.getResources().getDisplayMetrics().density);
+            convertView.setPadding(padding8, padding8, padding8, padding8);
+            
+            ViewGroup.LayoutParams params = holder.imvAvatar.getLayoutParams();
+            params.width = (int) (40 * context.getResources().getDisplayMetrics().density);
+            params.height = (int) (40 * context.getResources().getDisplayMetrics().density);
+            holder.imvAvatar.setLayoutParams(params);
+        }
         holder.tvTotalLikes.setText(String.valueOf(comment.getTotalLikes()));
         holder.imvAvatar.setImageResource(R.drawable.default_avatar);
         holder.tvUsername.setText("");
@@ -146,6 +174,15 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
                 commentRef.update("totalLikes", FieldValue.increment(-1));
             }
         });
+
+        // 5. Reply Click Listener
+        if (holder.tvReplyButton != null) {
+            holder.tvReplyButton.setOnClickListener(v -> {
+                if (context instanceof com.example.tiktokcloneproject.activity.CommentActivity) {
+                    ((com.example.tiktokcloneproject.activity.CommentActivity) context).startReply(comment, holder.tvUsername.getText().toString());
+                }
+            });
+        }
 
         return convertView;
     }

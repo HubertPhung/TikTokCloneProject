@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/white">
+    android:background="@color/dark_background">
 
     <!-- Header -->
     <RelativeLayout
@@ -19,13 +19,13 @@
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_inbox"
-            app:tint="@color/black" />
+            app:tint="@color/dark_text_primary" />
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="Hộp thư"
-            android:textColor="@color/black"
+            android:textColor="@color/dark_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
         <ImageView
@@ -34,7 +34,7 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_search"
-            app:tint="@color/black" />
+            app:tint="@color/dark_text_primary" />
     </RelativeLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -61,7 +61,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="#F1F1F1"
+                android:background="@color/dark_divider"
                 android:layout_marginHorizontal="16dp"/>
 
             <!-- Chat List -->
@@ -81,12 +81,12 @@
                         android:layout_width="80dp"
                         android:layout_height="80dp"
                         android:src="@drawable/ic_inbox"
-                        app:tint="#D1D1D1" />
+                        app:tint="@color/dark_text_secondary" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Chưa có tin nhắn nào"
-                        android:textColor="#8A8A8E"
+                        android:textColor="@color/dark_text_secondary"
                         android:layout_marginTop="12dp"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -95,6 +95,7 @@
                     android:id="@+id/rvInboxChats"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="@color/dark_background"
                     android:nestedScrollingEnabled="false"
                     tools:listitem="@layout/item_chat_user" />
             </FrameLayout>

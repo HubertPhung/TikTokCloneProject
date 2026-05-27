@@ -55,7 +55,7 @@ public class VideoSummaryAdapter extends RecyclerView.Adapter<VideoSummaryAdapte
             try {
                 String thumbUri = item.getThumbnailUri();
                 Object loadTarget;
-                boolean isVideo = thumbUri.toLowerCase().endsWith(".mp4");
+                boolean isVideo = thumbUri.toLowerCase().contains(".mp4");
                 
                 // Cloudinary: Get the very first frame (so_0) as requested
                 if (thumbUri.contains("cloudinary.com") && isVideo) {

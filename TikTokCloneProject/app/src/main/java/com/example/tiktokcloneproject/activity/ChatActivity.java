@@ -50,6 +50,7 @@ public class ChatActivity extends AppCompatActivity {
     private String receiverName;
     private String receiverAvatar;
     private String roomId;
+    private String currentUsername = "";
     private final String TAG = "ChatActivity";
 
     @Override
@@ -116,6 +117,15 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 });
 
+        if (fUser != null) {
+            FirebaseFirestore.getInstance().collection("profiles").document(fUser.getUid())
+                    .get().addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            currentUsername = doc.getString("username");
+                        }
+                    });
+        }
+
         btnSendMessage.setOnClickListener(v -> {
             String msg = etMessage.getText().toString().trim();
             if (!TextUtils.isEmpty(msg)) {
@@ -154,7 +164,27 @@ public class ChatActivity extends AppCompatActivity {
         messageValues.put("/ChatList/" + receiver + "/" + sender, chatListDataReceiver);
 
         ref.updateChildren(messageValues).addOnCompleteListener(task -> {
-            if (!task.isSuccessful()) {
+            if (task.isSuccessful()) {
+                if (currentUsername != null && !currentUsername.isEmpty()) {
+                    com.example.tiktokcloneproject.model.Notification.pushNotification(
+                        currentUsername, 
+                        receiver, 
+                        com.example.tiktokcloneproject.helper.StaticVariable.CHAT
+                    );
+                } else {
+                    FirebaseFirestore.getInstance().collection("profiles").document(sender)
+                            .get().addOnSuccessListener(doc -> {
+                                if (doc.exists()) {
+                                    String name = doc.getString("username");
+                                    com.example.tiktokcloneproject.model.Notification.pushNotification(
+                                        name != null ? name : "Ai đó", 
+                                        receiver, 
+                                        com.example.tiktokcloneproject.helper.StaticVariable.CHAT
+                                    );
+                                }
+                            });
+                }
+            } else {
                 Log.e(TAG, "Gửi tin nhắn thất bại", task.getException());
             }
         });

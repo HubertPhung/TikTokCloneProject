@@ -44,6 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             role = userDoc.data().role || 'user';
           }
 
+          // Check if user has admin, moderator, or viewer role
+          if (role !== 'admin' && role !== 'moderator' && role !== 'viewer') {
+            await signOut(auth);
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+
           setUser({
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -54,13 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setError(null);
         } catch (err) {
           console.error('Error fetching user role:', err);
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            role: 'user',
-          });
+          setError('Không thể xác thực quyền truy cập. Vui lòng thử lại.');
+          await signOut(auth);
+          setUser(null);
         }
       } else {
         setUser(null);

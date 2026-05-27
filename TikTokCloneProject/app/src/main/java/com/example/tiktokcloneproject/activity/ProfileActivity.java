@@ -372,6 +372,18 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
             Map<String, Object> data1 = new HashMap<>(); data1.put("userID", currentUserID);
             db.collection("profiles").document(userId).collection("followers").document(currentUserID).set(data1).addOnSuccessListener(aVoid -> {
                 syncFollowCounts(userId);
+                
+                // Gửi thông báo Follow
+                db.collection("profiles").document(currentUserID).get().addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        String name = doc.getString("username");
+                        com.example.tiktokcloneproject.model.Notification.pushNotification(
+                            name != null ? name : "Ai đó", 
+                            userId, 
+                            com.example.tiktokcloneproject.helper.StaticVariable.FOLLOW
+                        );
+                    }
+                });
             });
         });
     }
@@ -399,23 +411,21 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
 
     public void setLikes(String userId) {
         if (userId == null) return;
-        db.collection("profiles").document(userId).collection("public_videos").get().addOnCompleteListener(task -> {
+        db.collection("videos").whereEqualTo("authorId", userId).get().addOnCompleteListener(task -> {
             if (task.isSuccessful() && task.getResult() != null) {
-                ArrayList<String> userVideos = new ArrayList<>();
+                int count = 0;
                 for (QueryDocumentSnapshot document : task.getResult()) {
-                    String vidId = document.getString("videoId");
-                    if (vidId != null) userVideos.add(vidId);
-                }
-                db.collection("likes").get().addOnCompleteListener(task1 -> {
-                    if (task1.isSuccessful() && task1.getResult() != null) {
-                        totalLikes = 0;
-                        for (QueryDocumentSnapshot document : task1.getResult()) {
-                            if (userVideos.contains(document.getId())) totalLikes += document.getData().size();
+                    String modStatus = document.getString("moderationStatus");
+                    if (!"rejected".equals(modStatus) && !"pending".equals(modStatus)) {
+                        Long videoLikes = document.getLong("totalLikes");
+                        if (videoLikes != null) {
+                            count += videoLikes.intValue();
                         }
-                        if (txvLikes != null) txvLikes.setText(String.valueOf(totalLikes));
-                        db.collection("profiles").document(userId).update("likes", totalLikes);
                     }
-                });
+                }
+                totalLikes = count;
+                if (txvLikes != null) txvLikes.setText(String.valueOf(totalLikes));
+                db.collection("profiles").document(userId).update("likes", totalLikes);
             }
         });
     }

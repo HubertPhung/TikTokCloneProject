@@ -8,6 +8,8 @@ public class Comment {
     private String commentId, videoId, authorId, content;
     private int totalLikes, totalReplies;
     private ArrayList<String> replyIds;
+    private String parentId;
+    private String parentUsername;
 
     public Comment() {
         replyIds = new ArrayList<>();
@@ -21,6 +23,8 @@ public class Comment {
         this.totalLikes = 0;
         this.totalReplies = 0;
         this.replyIds = new ArrayList<>();
+        this.parentId = "";
+        this.parentUsername = "";
     }
 
     public String getCommentId() { return commentId; }
@@ -44,6 +48,12 @@ public class Comment {
     public ArrayList<String> getReplyIds() { return replyIds; }
     public void setReplyIds(ArrayList<String> replyIds) { this.replyIds = replyIds; }
 
+    public String getParentId() { return parentId; }
+    public void setParentId(String parentId) { this.parentId = parentId; }
+
+    public String getParentUsername() { return parentUsername; }
+    public void setParentUsername(String parentUsername) { this.parentUsername = parentUsername; }
+
     public Map<String, Object> toMap() {
         HashMap<String, Object> result = new HashMap<>();
         result.put("commentId", commentId);
@@ -53,6 +63,8 @@ public class Comment {
         result.put("totalReplies", totalReplies);
         result.put("replyIds", replyIds);
         result.put("content", content);
+        result.put("parentId", parentId);
+        result.put("parentUsername", parentUsername);
         return result;
     }
 }

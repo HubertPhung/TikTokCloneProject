@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@color/dark_background"
     tools:context="com.example.tiktokcloneproject.activity.InboxActivity">
 
     <ImageView
@@ -14,6 +15,7 @@
         android:layout_height="wrap_content"
         android:src="@drawable/ic_baseline_arrow_back_24"
         android:padding="16dp"
+        app:tint="@color/dark_text_primary"
         android:contentDescription="Back" />
 
     <FrameLayout
@@ -24,6 +26,7 @@
             android:id="@+id/lvNotifications"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@color/dark_background"
             android:scrollbarSize="3dp"
             android:padding="8dp"
             />
@@ -43,7 +46,7 @@
                 android:layout_width="200dp"
                 android:layout_height="wrap_content"
                 android:textAlignment="center"
-                android:textColor="?attr/colorOnPrimary"
+                android:textColor="@color/dark_text_secondary"
                 android:fontFamily="@font/montserrat_bold"
                 android:text="You don't have any notification yet"
                 android:textSize="14dp"></TextView>

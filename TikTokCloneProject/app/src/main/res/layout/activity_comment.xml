@@ -1,81 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/llComment"
     android:orientation="vertical"
-    android:background="?attr/colorPrimary">
-    <FrameLayout
+    android:background="@color/dark_background">
+
+    <RelativeLayout
+        android:id="@+id/layoutCommentToolbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="top">
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+        android:layout_height="52dp"
+        android:background="@color/dark_background"
+        android:paddingHorizontal="12dp">
 
         <ImageView
             android:id="@+id/imvBackToHomeScreen"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_centerVertical="true"
+            android:contentDescription="Go back to Homescreen"
+            android:src="@drawable/ic_baseline_arrow_back_24"
+            app:tint="@color/dark_text_primary" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginLeft="5dp"
-            android:layout_marginTop="5dp"
-            android:contentDescription="Go back to Homescreen"
-            android:src="@drawable/ic_baseline_arrow_back_24" />
-        </LinearLayout>
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Comment"
-            android:layout_gravity="center"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:layout_marginTop="5dp"
-            android:textAlignment="center"
+            android:layout_centerInParent="true"
             android:fontFamily="@font/montserrat_bold"
-            android:textColor="?attr/colorOnPrimary"/>
-    </FrameLayout>
+            android:text="Bình luận"
+            android:textColor="@color/dark_text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/dark_divider" />
     <ListView
         android:id="@+id/listViewComment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@color/dark_background"
         android:divider="@null"
+        android:paddingHorizontal="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:scrollbarSize="3dp"
         android:layout_weight="1"/>
 
     <LinearLayout
+        android:id="@+id/llReplyPreview"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_gravity="bottom"
-        android:gravity="center"
-        android:orientation="horizontal">
-        <de.hdodenhof.circleimageview.CircleImageView
-            android:id="@+id/imvMyAvatarInComment"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_margin="10dp"
-            android:src="@drawable/ic_baseline_account_circle_24"></de.hdodenhof.circleimageview.CircleImageView>
-
-        <EditText
-            android:layout_marginLeft="5dp"
-            android:id="@+id/edtComment"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="4"
-            android:hint="Add comment..."
-            android:background="@null"
-            android:fontFamily="@font/montserrat_medium"
-            android:textSize="14dp"></EditText>
-
-        <ImageButton
-            android:id="@+id/imbSendComment"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="@color/dark_surface"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/txvReplyingTo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@color/transparent"
-            android:src="@drawable/ic_send"></ImageButton>
+            android:textColor="@color/dark_text_secondary"
+            android:textSize="12sp"
+            android:text="Đang phản hồi @User..."/>
+        <ImageView
+            android:id="@+id/imvCancelReply"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_close"
+            app:tint="@color/dark_text_secondary"
+            android:clickable="true"
+            android:focusable="true"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:background="@color/dark_background"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="8dp">
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/imvMyAvatarInComment"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="10dp"
+            android:src="@drawable/ic_baseline_account_circle_24"></de.hdodenhof.circleimageview.CircleImageView>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@drawable/edt_shape"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="6dp">
+
+            <EditText
+                android:id="@+id/edtComment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="Thêm bình luận..."
+                android:fontFamily="@font/montserrat_medium"
+                android:textColor="@color/dark_text_primary"
+                android:textColorHint="@color/dark_text_secondary"
+                android:textSize="14dp"
+                android:minLines="1"
+                android:maxLines="4"
+                android:inputType="textMultiLine" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/imbSendComment"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/btn_red_shape"
+            android:contentDescription="Send comment"
+            android:src="@drawable/ic_send"
+            app:tint="@color/white"/>
     </LinearLayout>
 </LinearLayout>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, X, Check, AlertTriangle, ShieldCheck, UserX, Video, Trash2 } from 'lucide-react';
 import { db, collection, onSnapshot, doc, updateDoc, query, orderBy, limit } from '../../lib/firebase';
+import { formatTimeAgo } from '../../lib/utils';
 import { clsx } from 'clsx';
 
 interface Notification {
@@ -19,7 +20,7 @@ export function NotificationBell() {
 
   // Listen to reports collection for new pending reports as notifications
   useEffect(() => {
-    const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(20));
+    const q = query(collection(db, 'reports'), orderBy('timestamp', 'desc'), limit(20));
     const unsubReports = onSnapshot(q, (snapshot) => {
       const notifs: Notification[] = [];
       snapshot.forEach((docSnap) => {
@@ -31,7 +32,7 @@ export function NotificationBell() {
             title: `Báo cáo mới: ${data.reason || 'Vi phạm'}`,
             message: `${data.targetType === 'video' ? 'Video' : data.targetType === 'user' ? 'User' : 'Comment'} bị báo cáo: ${data.targetId || ''}`,
             read: false,
-            createdAt: data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
+            createdAt: data.timestamp?.toMillis?.() || data.timestamp || data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
           });
         }
       });
@@ -90,16 +91,7 @@ export function NotificationBell() {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
-  const formatTimeAgo = (ts: number) => {
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Vừa xong';
-    if (mins < 60) return `${mins}p`;
-    if (hours < 24) return `${hours}h`;
-    return `${days}d`;
-  };
+
 
   const getIcon = (type: string) => {
     switch (type) {
