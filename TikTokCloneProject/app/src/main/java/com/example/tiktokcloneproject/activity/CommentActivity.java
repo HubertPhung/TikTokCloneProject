@@ -133,23 +133,25 @@ public class CommentActivity extends Activity implements View.OnClickListener{
 
 
 
-        db.collection("users").document(user.getUid())
-                .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<DocumentSnapshot> task) {
-                        if (task.isSuccessful()) {
-                            DocumentSnapshot document = task.getResult();
-                            if (document.exists()) {
-                                username = document.get("username", String.class);
-                                Log.d(TAG, "DocumentSnapshot data: " + document.getData());
+        if (user != null) {
+            db.collection("users").document(user.getUid())
+                    .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                            if (task.isSuccessful()) {
+                                DocumentSnapshot document = task.getResult();
+                                if (document.exists()) {
+                                    username = document.get("username", String.class);
+                                    Log.d(TAG, "DocumentSnapshot data: " + document.getData());
+                                } else {
+                                    Log.d(TAG, "No such document");
+                                }
                             } else {
-                                Log.d(TAG, "No such document");
+                                Log.d(TAG, "get failed with ", task.getException());
                             }
-                        } else {
-                            Log.d(TAG, "get failed with ", task.getException());
                         }
-                    }
-                });
+                    });
+        }
 
         db.collection("comments")
                 .whereEqualTo("videoId", videoId)
@@ -195,8 +197,9 @@ public class CommentActivity extends Activity implements View.OnClickListener{
         }
         else
         {
-            Intent intent1 = new Intent(CommentActivity.this, HomeScreenActivity.class);
+            Intent intent1 = new Intent(CommentActivity.this, com.example.tiktokcloneproject.activity.MainActivity.class);
             startActivity(intent1);
+            finish();
         }
     }
 

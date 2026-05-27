@@ -123,9 +123,10 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:layout_marginStart="10dp"
-            android:background="@drawable/btn_red_shape"
             android:contentDescription="Send comment"
             android:src="@drawable/ic_send"
+            android:background="@drawable/btn_red_shape"
             app:tint="@color/white"/>
+
     </LinearLayout>
 </LinearLayout>

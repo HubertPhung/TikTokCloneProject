@@ -5,27 +5,50 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.example.tiktokcloneproject.R;
+import com.google.android.material.button.MaterialButton;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements View.OnClickListener {
+    MaterialButton btnChoiceEmail, btnChoiceEmailPassword;
+    TextView txvTitle, txvAlt;
+    ImageView btnBack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_signup_choice);
 
-        ImageView btnBack = findViewById(R.id.btnBack);
+        btnChoiceEmail = (MaterialButton) findViewById(R.id.btnChoiceEmail);
+        btnChoiceEmail.setIconTint(null);
+        btnChoiceEmailPassword = (MaterialButton) findViewById(R.id.btnChoiceEmailPassword);
+        txvTitle = (TextView) findViewById(R.id.txvTitle);
+        txvAlt = (TextView) findViewById(R.id.txv_alternative);
+        btnBack = findViewById(R.id.btnBack);
+
+        txvTitle.setText(getString(R.string.sign_up));
+        txvAlt.setText(getString(R.string.sign_up_alt));
+
+        btnChoiceEmail.setOnClickListener(this);
+        btnChoiceEmailPassword.setOnClickListener(this);
+        txvAlt.setOnClickListener(this);
         btnBack.setOnClickListener(v -> finish());
     }
 
-    public void signUpPage(View v) {
-        Intent intent = new Intent(MainActivity.this, SignupChoiceActivity.class);
-        startActivity(intent);
-    }
-
-    public void signInPage(View v) {
-        Intent intent = new Intent(MainActivity.this, SigninChoiceActivity.class);
-        startActivity(intent);
+    @Override
+    public void onClick(View view) {
+        if(view.getId() == btnChoiceEmail.getId()) {
+            Intent intent = new Intent(MainActivity.this, EmailSignInActivity.class);
+            startActivity(intent);
+        }
+        if(view.getId() == btnChoiceEmailPassword.getId()) {
+            Intent intent = new Intent(MainActivity.this, EmailSignupActivity.class);
+            startActivity(intent);
+        }
+        if(view.getId() == txvAlt.getId()) {
+            Intent intent = new Intent(MainActivity.this, EmailLogInActivity.class);
+            startActivity(intent);
+        }
     }
 }

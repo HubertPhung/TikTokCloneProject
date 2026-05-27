@@ -32,6 +32,7 @@ public class SigninChoiceActivity extends Activity implements View.OnClickListen
         
         btnChoiceEmail.setOnClickListener(this);
         btnChoiceEmailPassword.setOnClickListener(this);
+        txvAlt.setOnClickListener(this);
         btnBack.setOnClickListener(v -> finish());
     }
 

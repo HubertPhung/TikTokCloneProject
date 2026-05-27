@@ -1,7 +1,9 @@
 package com.example.tiktokcloneproject.adapters;
 
 import android.content.Context;
+import android.content.Intent;
 import android.text.SpannableString;
+import android.text.util.Linkify;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
@@ -63,7 +65,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         if (message.contains("[APPEAL:") && message.endsWith("]")) {
             setupAppealMessage(holder.show_message, message);
         } else {
-            holder.show_message.setText(message);
+            setupMessageText(holder.show_message, message);
         }
 
         // Hiện ảnh đại diện cho mọi tin nhắn bên trái (Người nhận)
@@ -102,6 +104,45 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
         ss.setSpan(clickableSpan, startIndex, endIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         textView.setText(ss);
         textView.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    private void setupMessageText(TextView textView, String message) {
+        if (message == null) {
+            textView.setText("");
+            return;
+        }
+
+        String sharePrefix = "https://hubertphung.github.io/toptop-share-page/?id=";
+        int startIndex = message.indexOf(sharePrefix);
+        if (startIndex != -1) {
+            int urlEndIndex = message.indexOf(" ", startIndex);
+            if (urlEndIndex == -1) {
+                urlEndIndex = message.length();
+            }
+            String videoId = message.substring(startIndex + sharePrefix.length(), urlEndIndex).trim();
+            
+            SpannableString ss = new SpannableString(message);
+            
+            ClickableSpan clickableSpan = new ClickableSpan() {
+                @Override
+                public void onClick(@NonNull View widget) {
+                    Intent intent = new Intent(mContext, com.example.tiktokcloneproject.activity.VideoActivity.class);
+                    intent.putExtra("videoId", videoId);
+                    mContext.startActivity(intent);
+                }
+            };
+            
+            ss.setSpan(clickableSpan, startIndex, urlEndIndex, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            textView.setText(ss);
+            textView.setMovementMethod(LinkMovementMethod.getInstance());
+        } else {
+            textView.setText(message);
+            if (Linkify.addLinks(textView, Linkify.WEB_URLS)) {
+                textView.setMovementMethod(LinkMovementMethod.getInstance());
+            } else {
+                textView.setMovementMethod(null);
+            }
+        }
     }
 
     private void showAppealDialog(String reportId) {

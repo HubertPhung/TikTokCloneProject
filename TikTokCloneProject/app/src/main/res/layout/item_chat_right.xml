@@ -15,5 +15,6 @@
         android:padding="10dp"
         android:text="Message"
         android:textColor="@color/white"
+        android:textColorLink="#3897f0"
         android:textSize="14sp" />
 </LinearLayout>

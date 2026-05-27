@@ -35,6 +35,7 @@ import com.example.tiktokcloneproject.activity.CommentActivity;
 import com.example.tiktokcloneproject.activity.DescriptionVideoActivity;
 import com.example.tiktokcloneproject.activity.HomeScreenActivity;
 import com.example.tiktokcloneproject.activity.ProfileActivity;
+import com.example.tiktokcloneproject.activity.MainActivity;
 import com.example.tiktokcloneproject.helper.FirebaseHelper;
 import com.example.tiktokcloneproject.helper.GlobalVariable;
 import com.example.tiktokcloneproject.helper.OnSwipeTouchListener;
@@ -548,7 +549,9 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         private void toggleLikeLocal() {
             String currentUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
             if (currentUid.isEmpty()) {
-                Toast.makeText(context, "Vui lòng đăng nhập!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, "Vui lòng đăng nhập để thích video!", Toast.LENGTH_SHORT).show();
+                Intent loginIntent = new Intent(context, MainActivity.class);
+                context.startActivity(loginIntent);
                 return;
             }
             isLiked = !isLiked;
@@ -647,6 +650,13 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         }
 
         private void showComments() {
+            String currentUid = FirebaseAuth.getInstance().getCurrentUser() != null ? FirebaseAuth.getInstance().getCurrentUser().getUid() : "";
+            if (currentUid.isEmpty()) {
+                Toast.makeText(context, "Vui lòng đăng nhập để bình luận!", Toast.LENGTH_SHORT).show();
+                Intent loginIntent = new Intent(context, MainActivity.class);
+                context.startActivity(loginIntent);
+                return;
+            }
             Intent intent = new Intent(context, CommentActivity.class);
             intent.putExtra("videoId", boundVideoId);
             intent.putExtra("authorId", authorId); // Đã thêm: truyền ID tác giả video
@@ -686,7 +696,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
             dialog.setContentView(R.layout.share_video_layout);
 
-            String shareUrl = "https://video.toptoptoptop.com/video/" + currentVideo.getVideoId();
+            String shareUrl = "https://hubertphung.github.io/toptop-share-page/?id=" + currentVideo.getVideoId();
             
             dialog.findViewById(R.id.btnCopyURL).setOnClickListener(view -> {
                 ClipboardManager cb = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);

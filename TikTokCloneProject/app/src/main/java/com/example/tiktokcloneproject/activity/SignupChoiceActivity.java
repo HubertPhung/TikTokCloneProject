@@ -33,6 +33,7 @@ public class SignupChoiceActivity extends Activity implements View.OnClickListen
 
         btnChoiceEmail.setOnClickListener(this);
         btnChoiceEmailPassword.setOnClickListener(this);
+        txvAlt.setOnClickListener(this);
         btnBack.setOnClickListener(v -> finish());
     }
 
@@ -47,7 +48,7 @@ public class SignupChoiceActivity extends Activity implements View.OnClickListen
             startActivity(intent);
         }
         if(view.getId() == txvAlt.getId()) {
-            Intent intent = new Intent(SignupChoiceActivity.this, SigninChoiceActivity.class);
+            Intent intent = new Intent(SignupChoiceActivity.this, EmailLogInActivity.class);
             startActivity(intent);
         }
     }

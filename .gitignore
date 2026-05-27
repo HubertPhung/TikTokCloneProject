@@ -31,3 +31,7 @@ TikTokCloneProject/app/build/
 TikTokManagement/node_modules/
 TikTokManagement/dist/
 TikTokManagement/.env
+
+# Custom redirect page repo
+toptop-share-page/
+
