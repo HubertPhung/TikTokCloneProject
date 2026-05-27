@@ -13,12 +13,15 @@ import {
   AlertTriangle,
   MessageSquare,
   Video,
-  User
+  User,
+  Play,
+  X,
+  Loader2
 } from 'lucide-react';
 import { clsx } from 'clsx';
-import { db, collection, onSnapshot, doc, updateDoc } from '../lib/firebase';
+import { db, collection, onSnapshot, doc, updateDoc, getDoc } from '../lib/firebase';
 import { formatTimeAgo } from '../lib/utils';
-import type { Report, ReportStatus } from '../types';
+import type { Report, ReportStatus, Video as VideoData } from '../types';
 
 export function Reports() {
   const { user } = useAuth();
@@ -31,6 +34,9 @@ export function Reports() {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
+
+  const [playingVideo, setPlayingVideo] = useState<VideoData | null>(null);
+  const [fetchingVideo, setFetchingVideo] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'reports'), (snapshot) => {
@@ -79,6 +85,39 @@ export function Reports() {
     } catch (err) {
       console.error('Error dismissing report:', err);
       alert('Lỗi khi bỏ qua báo cáo!');
+    }
+  };
+
+  const handleRowDoubleClick = async (report: Report) => {
+    if (report.targetType !== 'video') return;
+    
+    setFetchingVideo(true);
+    try {
+      const videoDoc = await getDoc(doc(db, 'videos', report.targetId));
+      if (videoDoc.exists()) {
+        const data = videoDoc.data();
+        setPlayingVideo({
+          videoId: videoDoc.id,
+          videoUri: data.videoUri || '',
+          authorId: data.authorId || '',
+          username: data.username || 'Ẩn danh',
+          description: data.description || '',
+          timestamp: data.timestamp || 0,
+          totalLikes: data.totalLikes || 0,
+          totalComments: data.totalComments || 0,
+          watchCount: data.watchCount || 0,
+          moderationStatus: data.moderationStatus || 'approved',
+          aiFlagged: data.aiFlagged || false,
+          aiConfidence: data.aiConfidence || 0,
+        });
+      } else {
+        alert('Không tìm thấy video này! Có thể video đã bị xóa.');
+      }
+    } catch (err) {
+      console.error('Error fetching video for report:', err);
+      alert('Lỗi khi tải thông tin video.');
+    } finally {
+      setFetchingVideo(false);
     }
   };
 
@@ -217,7 +256,15 @@ export function Reports() {
               ) : paginatedReports.map((report) => {
                 const TargetIcon = getTargetIcon(report.targetType);
                 return (
-                  <tr key={report.id} className="hover:bg-surface-high/30 transition-colors group">
+                  <tr 
+                    key={report.id} 
+                    onDoubleClick={() => handleRowDoubleClick(report)}
+                    className={clsx(
+                      "hover:bg-surface-high/30 transition-colors group select-none",
+                      report.targetType === 'video' && "cursor-pointer"
+                    )}
+                    title={report.targetType === 'video' ? "Double click để xem video bị tố cáo" : undefined}
+                  >
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
                         <TargetIcon className="w-4 h-4 text-on-surface-variant" />
@@ -334,6 +381,84 @@ export function Reports() {
           </div>
         </div>
       </div>
+
+      {/* Playing Video Modal */}
+      {playingVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-md">
+          <div className="relative w-full max-w-4xl max-h-screen flex flex-col md:flex-row bg-surface border border-outline-variant/20 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Video Player */}
+            <div className="relative flex-1 bg-black flex items-center justify-center min-h-[50vh] md:min-h-[80vh]">
+              {playingVideo.videoUri ? (
+                <video
+                  src={playingVideo.videoUri}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[80vh] w-auto h-auto object-contain"
+                />
+              ) : (
+                <div className="text-on-surface-variant flex flex-col items-center">
+                  <Play className="w-16 h-16 mb-4 opacity-50" />
+                  <p>Video không khả dụng</p>
+                </div>
+              )}
+            </div>
+
+            {/* Video Details Side Panel */}
+            <div className="w-full md:w-80 flex flex-col bg-surface-low border-l border-outline-variant/10">
+              <div className="p-4 border-b border-outline-variant/10 flex justify-between items-center bg-surface">
+                <h3 className="font-headline font-bold text-on-surface truncate">Chi tiết Video bị tố cáo</h3>
+                <button
+                  onClick={() => setPlayingVideo(null)}
+                  className="p-1.5 text-on-surface-variant hover:bg-surface-high hover:text-on-surface rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-4 flex-1 overflow-y-auto space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    {playingVideo.username.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-label text-sm text-on-surface font-bold">@{playingVideo.username}</p>
+                    <p className="text-xs text-on-surface-variant">
+                      {new Date(playingVideo.timestamp).toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-surface-high/50 p-3 rounded-lg border border-outline-variant/10">
+                  <p className="font-body text-sm text-on-surface whitespace-pre-wrap">{playingVideo.description || 'Không có mô tả'}</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center py-2">
+                  <div className="bg-surface p-2 rounded border border-outline-variant/10">
+                    <p className="text-xs text-on-surface-variant mb-1">Lượt thích</p>
+                    <p className="font-label font-bold text-on-surface">{playingVideo.totalLikes}</p>
+                  </div>
+                  <div className="bg-surface p-2 rounded border border-outline-variant/10">
+                    <p className="text-xs text-on-surface-variant mb-1">Bình luận</p>
+                    <p className="font-label font-bold text-on-surface">{playingVideo.totalComments}</p>
+                  </div>
+                  <div className="bg-surface p-2 rounded border border-outline-variant/10">
+                    <p className="text-xs text-on-surface-variant mb-1">Lượt xem</p>
+                    <p className="font-label font-bold text-on-surface">{playingVideo.watchCount}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fetching Video Loading Overlay */}
+      {fetchingVideo && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm">
+          <Loader2 className="w-10 h-10 animate-spin text-primary mb-2" />
+          <span className="text-on-surface font-label text-sm">Đang tải video...</span>
+        </div>
+      )}
     </div>
   );
 }
