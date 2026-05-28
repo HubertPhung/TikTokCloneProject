@@ -27,6 +27,7 @@
             android:background="@android:color/transparent"
             android:contentDescription="Back"
             android:layout_marginEnd="4dp"
+            android:tint="@color/tiktok_red"
             app:tint="@color/tiktok_red" />
 
         <!-- SEARCH -->

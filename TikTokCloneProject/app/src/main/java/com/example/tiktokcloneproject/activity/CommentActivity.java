@@ -299,9 +299,9 @@ public class CommentActivity extends Activity implements View.OnClickListener{
         this.replyingToComment = comment;
         this.replyingToUsername = authorUsername;
         if (llReplyPreview != null) llReplyPreview.setVisibility(View.VISIBLE);
-        if (txvReplyingTo != null) txvReplyingTo.setText("Đang phản hồi @" + authorUsername + "...");
+        if (txvReplyingTo != null) txvReplyingTo.setText("@" + authorUsername + "...");
         if (edtComment != null) {
-            edtComment.setHint("Phản hồi @" + authorUsername + "...");
+            edtComment.setHint("@" + authorUsername + "...");
             edtComment.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {

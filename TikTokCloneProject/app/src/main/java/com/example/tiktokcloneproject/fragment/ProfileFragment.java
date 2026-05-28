@@ -32,6 +32,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.activity.EditProfileActivity;
+import com.example.tiktokcloneproject.activity.FullScreenAvatarActivity;
 import com.example.tiktokcloneproject.activity.FollowListActivity;
 import com.example.tiktokcloneproject.activity.HomeScreenActivity;
 import com.example.tiktokcloneproject.activity.MainActivity;
@@ -72,6 +73,7 @@ public class ProfileFragment extends Fragment implements View.OnClickListener {
     ArrayList<VideoSummary> videoSummaries;
     View layout;
     int totalLikes = 0;
+    private String currentAvatarUrl;
 
     public static ProfileFragment newInstance(String strArg, String profileLinkId) {
         ProfileFragment fragment = new ProfileFragment();
@@ -285,6 +287,7 @@ public class ProfileFragment extends Fragment implements View.OnClickListener {
                     }
 
                     String avatarUrl = document.getString("avatarUrl");
+                    this.currentAvatarUrl = avatarUrl;
                     if (avatarUrl != null && imvAvatarProfile != null) {
                         Glide.with(this).load(avatarUrl).placeholder(R.drawable.default_avatar).circleCrop().into(imvAvatarProfile);
                     }
@@ -318,6 +321,10 @@ public class ProfileFragment extends Fragment implements View.OnClickListener {
             updateBio();
         } else if (id == R.id.btn_cancel_update_bio) {
             if (edtBio != null) edtBio.setText(oldBioText);
+        } else if (id == R.id.imvAvatarProfile) {
+            Intent intent = new Intent(context != null ? context : getActivity(), FullScreenAvatarActivity.class);
+            intent.putExtra("avatarUrl", currentAvatarUrl);
+            startActivity(intent);
         } else if (id == R.id.ll_followers) {
             Intent intent = new Intent(context != null ? context : getActivity(), FollowListActivity.class);
             intent.putExtra("pageIndex", 1);
@@ -443,6 +450,7 @@ public class ProfileFragment extends Fragment implements View.OnClickListener {
                 docRef.get().addOnSuccessListener(document -> {
                     if (isAdded() && document.exists()) {
                         String avatarUrl = document.getString("avatarUrl");
+                        this.currentAvatarUrl = avatarUrl;
                         if (avatarUrl != null && imvAvatarProfile != null) {
                             Glide.with(this).load(avatarUrl).placeholder(R.drawable.default_avatar).circleCrop().into(imvAvatarProfile);
                         }

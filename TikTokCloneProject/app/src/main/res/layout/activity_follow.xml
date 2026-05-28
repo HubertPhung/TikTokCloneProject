@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@color/dark_background"
     tools:context=".activity.FollowActivity">
 
     <LinearLayout
@@ -19,7 +20,9 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_baseline_arrow_back_24"
             android:padding="16dp"
-            android:contentDescription="Back" />
+            android:contentDescription="Back"
+            android:tint="@color/dark_text_primary"
+            app:tint="@color/dark_text_primary" />
 
         <View
             android:layout_width="0dp"
@@ -34,6 +37,7 @@
             android:clickable="true"
             android:onClick="onClick"
             android:text="&#9776;"
+            android:textColor="@color/dark_text_primary"
             android:textSize="20sp" />
     </LinearLayout>
 
@@ -53,7 +57,8 @@
         android:layout_gravity="center"
         android:layout_margin="5dp"
         android:textSize="18dp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="@color/dark_text_primary" />
 
     <LinearLayout
         android:id="@+id/info"
@@ -74,12 +79,14 @@
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textStyle="bold"
-                android:textSize="20dp" />
+                android:textSize="20dp"
+                android:textColor="@color/dark_text_primary" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Following"
-                android:textSize="14dp" />
+                android:textSize="14dp"
+                android:textColor="@color/dark_text_secondary" />
         </LinearLayout>
 
         <LinearLayout
@@ -93,12 +100,14 @@
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textStyle="bold"
-                android:textSize="20dp" />
+                android:textSize="20dp"
+                android:textColor="@color/dark_text_primary" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Followers"
-                android:textSize="14dp" />
+                android:textSize="14dp"
+                android:textColor="@color/dark_text_secondary" />
         </LinearLayout>
 
         <LinearLayout
@@ -112,12 +121,14 @@
                 android:layout_height="wrap_content"
                 android:text="0"
                 android:textStyle="bold"
-                android:textSize="20dp" />
+                android:textSize="20dp"
+                android:textColor="@color/dark_text_primary" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Likes"
-                android:textSize="14dp" />
+                android:textSize="14dp"
+                android:textColor="@color/dark_text_secondary" />
         </LinearLayout>
     </LinearLayout>
 
@@ -144,10 +155,10 @@
             android:minWidth="120dp"
             android:text="Nhắn tin"
             android:textAllCaps="false"
-            android:backgroundTint="@color/white"
-            android:textColor="@color/black"
+            android:backgroundTint="@color/dark_surface"
+            android:textColor="@color/dark_text_primary"
             app:strokeWidth="1dp"
-            app:strokeColor="@color/black"/>
+            app:strokeColor="@color/dark_divider"/>
 
     </LinearLayout>
 

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".activity.AccountSettingActivity"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@color/dark_background">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,7 +20,8 @@
             android:layout_marginLeft="5dp"
             android:layout_marginTop="5dp"
             android:contentDescription="Go back to ProfileActivity"
-            android:src="@drawable/ic_baseline_arrow_back_24" />
+            android:src="@drawable/ic_baseline_arrow_back_24"
+            android:tint="@color/white" />
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -30,13 +31,13 @@
             android:textStyle="bold"
             android:layout_marginTop="5dp"
             android:textAlignment="center"
-            android:textColor="@color/black"/>
+            android:textColor="@color/white"/>
     </LinearLayout>
     <FrameLayout
         android:id="@+id/flDeleteAccountOption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/tiktok_white"
+        android:background="@color/dark_surface"
         android:padding="15dp"
         android:layout_marginTop="30dp"
         >
@@ -45,7 +46,7 @@
             android:layout_height="wrap_content"
             android:text="Delete account"
             android:layout_gravity="start"
-            android:textColor="@color/black"
+            android:textColor="@color/white"
             android:layout_marginStart="10dp"
             android:textStyle="bold"/>
         <ImageView
@@ -53,7 +54,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_baseline_keyboard_arrow_right_24"
             android:layout_gravity="end"
-            />
+            android:tint="@color/white" />
 
 
     </FrameLayout>
@@ -61,7 +62,7 @@
         android:id="@+id/flChangePasswordOption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/tiktok_white"
+        android:background="@color/dark_surface"
         android:padding="15dp"
         android:layout_marginTop="0dp"
         >
@@ -71,7 +72,7 @@
             android:layout_height="wrap_content"
             android:text="Change password"
             android:layout_gravity="start"
-            android:textColor="@color/black"
+            android:textColor="@color/white"
             android:layout_marginStart="10dp"
             android:textStyle="bold"/>
         <ImageView
@@ -79,7 +80,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_baseline_keyboard_arrow_right_24"
             android:layout_gravity="end"
-            />
+            android:tint="@color/white" />
 
 
     </FrameLayout>

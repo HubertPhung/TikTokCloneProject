@@ -87,13 +87,6 @@
                 android:src="@drawable/default_avatar"
                 app:civ_border_width="1dp"
                 app:civ_border_color="@color/tiktok_white" />
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@drawable/ic_baseline_video_library_24"
-                android:layout_alignBottom="@id/imvAvatar"
-                android:layout_centerHorizontal="true"
-                android:layout_marginBottom="-10dp" />
         </RelativeLayout>
 
         <ImageView

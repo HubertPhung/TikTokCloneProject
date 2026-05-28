@@ -56,7 +56,6 @@ public class FollowerAdapter extends BaseAdapter {
 
         ImageView imvAvatar = view.findViewById(R.id.imv_follower_avatar);
         TextView tvUserName = view.findViewById(R.id.tv_followers_userMame);
-        TextView tvRemove = view.findViewById(R.id.tv_remove_follower);
 
         String userId = followerIdList.get(i);
         tvUserName.setText(followerUserNameList.get(i));
@@ -84,20 +83,6 @@ public class FollowerAdapter extends BaseAdapter {
         });
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-
-        tvRemove.setOnClickListener(v -> {
-            AlertDialog.Builder builder = new AlertDialog.Builder(v.getContext());
-            builder.setTitle("Remove this follower");
-            builder.setMessage("\"" + followerUserNameList.get(i) + "\" will no longer follow you.");
-            builder.setPositiveButton("Remove", (dialog, which) -> {
-                if (currentUser == null) return;
-                db.collection("profiles").document(currentUser.getUid()).collection("followers").document(userId).delete();
-                db.collection("profiles").document(userId).collection("following").document(currentUser.getUid()).delete();
-                Toast.makeText(context, "Follower removed", Toast.LENGTH_SHORT).show();
-            });
-            builder.setNegativeButton("Cancel", null);
-            builder.show();
-        });
 
         view.setOnClickListener(v -> {
             Intent intent = new Intent(context, ProfileActivity.class);

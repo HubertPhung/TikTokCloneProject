@@ -23,6 +23,7 @@
         android:src="@drawable/ic_back"
         android:scaleType="centerInside"
         android:elevation="10dp"
+        android:tint="@color/tiktok_white"
         app:tint="@color/tiktok_white" />
 
 </FrameLayout>

@@ -29,7 +29,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 public class NavigationFragment extends Fragment implements View.OnClickListener {
     private Context context = null;
     private String message = "";
-    private Button btnHome, btnFriend, btnAddVideo, btnInbox, btnProfile;
+    private Button btnHome, btnSearch, btnAddVideo, btnInbox, btnProfile;
     private FirebaseUser user;
     private FirebaseFirestore db;
     private static long pressedBackTime = 0;
@@ -61,7 +61,7 @@ public class NavigationFragment extends Fragment implements View.OnClickListener
 // inflate res/layout_blue.xml to make GUI holding a TextView and a ListView
         LinearLayout layout = (LinearLayout) inflater.inflate(R.layout.fragment_navigation, null);
         btnHome = (Button) layout.findViewById(R.id.btnHome);
-      //  btnFriend = (Button) layout.findViewById(R.id.btnFriend);
+        btnSearch = (Button) layout.findViewById(R.id.btnSearch);
         btnAddVideo = (Button) layout.findViewById(R.id.btnAddVideo);
         btnInbox = (Button) layout.findViewById(R.id.btnInbox);
         btnProfile = (Button) layout.findViewById(R.id.btnProfile);
@@ -86,7 +86,7 @@ public class NavigationFragment extends Fragment implements View.OnClickListener
         });
 
         btnHome.setOnClickListener(this);
-        // btnFriend.setOnClickListener(this); // btnFriend is not used
+        if (btnSearch != null) btnSearch.setOnClickListener(this);
         btnAddVideo.setOnClickListener(this);
         btnInbox.setOnClickListener(this);
         btnProfile.setOnClickListener(this);
@@ -107,10 +107,9 @@ public class NavigationFragment extends Fragment implements View.OnClickListener
         if(view.getId() == btnInbox.getId()) {
             handleInboxClick();
         }
-        // btnFriend is not used
-        // if(view.getId() == btnFriend.getId()) {
-        // }
-
+        if(btnSearch != null && view.getId() == btnSearch.getId()) {
+            handleSearchClick();
+        }
     }
 
     private void handleProfileClick() {
@@ -163,6 +162,16 @@ public class NavigationFragment extends Fragment implements View.OnClickListener
             return;
         }
         Intent intent = new Intent(context, HomeScreenActivity.class);
+        startActivity(intent);
+    }
+
+    private void handleSearchClick() {
+        if(context instanceof HomeScreenActivity) {
+            ((HomeScreenActivity) context).handleSearchClick();
+            return;
+        }
+        Intent intent = new Intent(context, HomeScreenActivity.class);
+        intent.putExtra("fragment_search", true);
         startActivity(intent);
     }
 

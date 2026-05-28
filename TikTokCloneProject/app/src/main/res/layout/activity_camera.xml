@@ -73,7 +73,7 @@
                     android:layout_width="wrap_content"
                     android:drawableTop="@drawable/ic_close"
                     android:layout_height="wrap_content"
-                    android:layout_marginLeft="-15dp"
+                    android:layout_marginLeft="0dp"
                     android:layout_marginTop="6dp"
                     android:onClick="onClick"
                     />

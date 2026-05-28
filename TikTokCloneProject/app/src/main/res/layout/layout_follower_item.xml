@@ -33,15 +33,5 @@
         android:textSize="10dp"
         android:text="Follow back"
         style="@style/tiktok_button_red"/>
-    <TextView
-        android:id="@+id/tv_remove_follower"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="&#8722;"
-        android:textColor="@color/tiktok_red"
-        android:layout_gravity="center"
-        android:gravity="end"
-        android:layout_marginRight="10dp"
-        android:textSize="25dp"
-        android:clickable="true"/>
+
 </LinearLayout>

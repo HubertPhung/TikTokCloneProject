@@ -24,6 +24,11 @@ public class GlobalVariable extends Application {
     public void onCreate() {
         super.onCreate();
         
+        // Force Dark Mode application-wide
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(
+                androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+        );
+        
         try {
             // Cấu hình Firestore
             FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()

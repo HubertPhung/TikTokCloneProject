@@ -299,7 +299,11 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
             Toast.makeText(ProfileActivity.this, "Link copied", Toast.LENGTH_SHORT).show();
         });
         
-        imvAvatarInSharedPlace.setOnClickListener(view -> startActivity(new Intent(ProfileActivity.this, FullScreenAvatarActivity.class)));
+        imvAvatarInSharedPlace.setOnClickListener(view -> {
+            Intent intent = new Intent(ProfileActivity.this, FullScreenAvatarActivity.class);
+            intent.putExtra("avatarUrl", currentAvatarUrl);
+            startActivity(intent);
+        });
         dialog.findViewById(R.id.txvCancelInSharedPlace).setOnClickListener(view -> dialog.cancel());
         
         dialog.show();

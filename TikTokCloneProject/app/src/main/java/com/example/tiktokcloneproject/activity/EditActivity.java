@@ -63,7 +63,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.overridePendingTransition(R.anim.slide_left_to_right, R.anim.slide_right_to_left);
-        setContentView(R.layout.activity_edit);
+        setContentView(R.layout.activity_edit_name);
 
         layoutInput = (TextInputLayout) findViewById(R.id.layoutInput);
         edtInput = (TextInputEditText) findViewById(R.id.edtInput);
@@ -220,7 +220,7 @@ public class EditActivity extends Activity implements View.OnClickListener {
             btnSave.setTextColor(ContextCompat.getColor(this, R.color.tiktok_red));
         } else {
             btnSave.setEnabled(false);
-            btnSave.setTextColor(ContextCompat.getColor(this, R.color.tiktok_grey_50));
+            btnSave.setTextColor(ContextCompat.getColor(this, R.color.tiktok_grey));
         }
     }
 

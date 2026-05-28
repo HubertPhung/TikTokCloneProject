@@ -22,6 +22,7 @@
             android:layout_centerVertical="true"
             android:contentDescription="Go back to Homescreen"
             android:src="@drawable/ic_baseline_arrow_back_24"
+            android:tint="@color/dark_text_primary"
             app:tint="@color/dark_text_primary" />
 
         <TextView
@@ -68,12 +69,13 @@
             android:layout_weight="1"
             android:textColor="@color/dark_text_secondary"
             android:textSize="12sp"
-            android:text="Đang phản hồi @User..."/>
+            android:text="@User..."/>
         <ImageView
             android:id="@+id/imvCancelReply"
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_close"
+            android:tint="@color/dark_text_secondary"
             app:tint="@color/dark_text_secondary"
             android:clickable="true"
             android:focusable="true"/>
@@ -126,6 +128,8 @@
             android:contentDescription="Send comment"
             android:src="@drawable/ic_send"
             android:background="@drawable/btn_red_shape"
+            android:padding="8dp"
+            android:scaleType="centerInside"
             app:tint="@color/white"/>
 
     </LinearLayout>

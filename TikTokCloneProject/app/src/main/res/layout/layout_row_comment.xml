@@ -52,7 +52,7 @@
             android:layout_marginTop="6dp"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
-            android:text="Phản hồi"
+            android:text="Reply"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackgroundBorderless"/>

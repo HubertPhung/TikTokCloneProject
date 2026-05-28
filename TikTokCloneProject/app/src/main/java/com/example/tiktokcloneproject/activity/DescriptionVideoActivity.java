@@ -69,6 +69,7 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
     String username = "user";
     Uri videoUri;
     final long maximumDuration = 300000;
+    final long maximumVideoSize = 100 * 1024 * 1024; // 100MB
 
     FirebaseAuth mAuth;
     FirebaseUser user;
@@ -176,6 +177,42 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
         }
     }
 
+    private long getVideoSize(Uri uri) {
+        if (uri == null) return 0;
+        if ("file".equals(uri.getScheme())) {
+            String path = uri.getPath();
+            if (path != null) {
+                File file = new File(path);
+                if (file.exists()) {
+                    return file.length();
+                }
+            }
+        }
+        
+        try (android.content.res.AssetFileDescriptor fd = getContentResolver().openAssetFileDescriptor(uri, "r")) {
+            if (fd != null) {
+                long len = fd.getLength();
+                if (len > 0) return len;
+            }
+        } catch (Exception ignored) {}
+
+        android.database.Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, new String[]{android.provider.OpenableColumns.SIZE}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                if (sizeIndex != -1) {
+                    return cursor.getLong(sizeIndex);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error querying size: " + e.getMessage());
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        return 0;
+    }
+
     private void processVideoMetadata() {
         new Thread(() -> {
             MediaMetadataRetriever mmr = new MediaMetadataRetriever();
@@ -187,10 +224,20 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                 }
                 String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 long duration = Long.parseLong(durationStr);
+                long videoSize = getVideoSize(videoUri);
                 
-                if (duration > maximumDuration) {
+                boolean isDurationInvalid = duration > maximumDuration;
+                boolean isSizeInvalid = videoSize > maximumVideoSize;
+
+                if (isDurationInvalid || isSizeInvalid) {
                     runOnUiThread(() -> {
-                        Toast.makeText(this, "Video quá dài! Tối đa 5 phút.", Toast.LENGTH_LONG).show();
+                        if (isDurationInvalid && isSizeInvalid) {
+                            Toast.makeText(this, "Video quá dài (Tối đa 5 phút) và vượt quá 100MB!", Toast.LENGTH_LONG).show();
+                        } else if (isDurationInvalid) {
+                            Toast.makeText(this, "Video quá dài! Tối đa 5 phút.", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(this, "Dung lượng video vượt quá 100MB!", Toast.LENGTH_LONG).show();
+                        }
                         btnDescription.setEnabled(false);
                     });
                 }
@@ -334,6 +381,12 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
             return;
         }
 
+        long videoSize = getVideoSize(videoUri);
+        if (videoSize > maximumVideoSize) {
+            Toast.makeText(this, "Dung lượng video vượt quá 100MB!", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         final String description = edtDescription.getText().toString().trim();
         hashtags.clear();
         Matcher matcher = Pattern.compile(REGEX_HASHTAG).matcher(description);
@@ -375,6 +428,15 @@ public class DescriptionVideoActivity extends FragmentActivity implements View.O
                     while ((length = is.read(buffer)) > 0) os.write(buffer, 0, length);
                 } finally {
                     try { is.close(); } catch (Exception ignored) {}
+                }
+
+                if (tempFile.length() > maximumVideoSize) {
+                    tempFile.delete();
+                    runOnUiThread(() -> {
+                        Toast.makeText(appCtx, "Dung lượng video vượt quá 100MB!", Toast.LENGTH_LONG).show();
+                        btnDescription.setEnabled(true);
+                    });
+                    return;
                 }
 
                 runOnUiThread(() -> {

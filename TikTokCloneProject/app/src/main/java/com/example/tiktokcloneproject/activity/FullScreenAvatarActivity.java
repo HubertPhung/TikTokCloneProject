@@ -14,6 +14,8 @@ import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.helper.StaticVariable;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.bumptech.glide.Glide;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.storage.FirebaseStorage;
@@ -54,25 +56,36 @@ public class FullScreenAvatarActivity extends AppCompatActivity{
     }
 
     private void getImage() {
-        // ĐÃ SỬA: Xóa dấu / ở đầu đường dẫn
-        folderPath = "user_avatars";
-        fileName = user.getUid();
-        StorageReference download = storageReference.child(folderPath).child(fileName);
-
-        download.getBytes(StaticVariable.MAX_BYTES_AVATAR)
-                .addOnSuccessListener(new OnSuccessListener<byte[]>() {
-                    @Override
-                    public void onSuccess(byte[] bytes) {
-                        bitmap = BitmapFactory.decodeByteArray(bytes, 0 , bytes.length);
-                        imvFullScreen.setImageBitmap(bitmap);
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        imvFullScreen.setImageResource(R.drawable.default_avatar);
-                    }
-                });
+        String avatarUrl = getIntent().getStringExtra("avatarUrl");
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            Glide.with(this)
+                    .load(avatarUrl)
+                    .placeholder(R.drawable.default_avatar)
+                    .into(imvFullScreen);
+        } else {
+            // Fallback: load current user avatar from Firestore
+            if (user != null) {
+                FirebaseFirestore.getInstance().collection("profiles").document(user.getUid()).get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            if (documentSnapshot.exists()) {
+                                String url = documentSnapshot.getString("avatarUrl");
+                                if (url != null && !url.isEmpty()) {
+                                    Glide.with(FullScreenAvatarActivity.this)
+                                            .load(url)
+                                            .placeholder(R.drawable.default_avatar)
+                                            .into(imvFullScreen);
+                                    return;
+                                }
+                            }
+                            imvFullScreen.setImageResource(R.drawable.default_avatar);
+                        })
+                        .addOnFailureListener(e -> {
+                            imvFullScreen.setImageResource(R.drawable.default_avatar);
+                        });
+            } else {
+                imvFullScreen.setImageResource(R.drawable.default_avatar);
+            }
+        }
     }
 
 }

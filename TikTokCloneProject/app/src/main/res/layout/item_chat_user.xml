@@ -41,13 +41,4 @@
             android:ellipsize="end" />
     </LinearLayout>
 
-    <ImageView
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:src="@drawable/ic_camera"
-        app:tint="@color/dark_text_secondary"
-        android:alpha="0.6"/>
-
 </RelativeLayout>

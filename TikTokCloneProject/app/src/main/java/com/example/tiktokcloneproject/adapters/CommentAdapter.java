@@ -76,10 +76,10 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
 
         // 1. Init UI with data from model
         if (comment.getParentId() != null && !comment.getParentId().isEmpty() && comment.getParentUsername() != null) {
-            String text = "Phản hồi @" + comment.getParentUsername() + ": " + comment.getContent();
+            String text = "@" + comment.getParentUsername() + ": " + comment.getContent();
             android.text.SpannableString ss = new android.text.SpannableString(text);
-            int start = 8; 
-            int end = start + comment.getParentUsername().length() + 1; 
+            int start = 0; 
+            int end = comment.getParentUsername().length() + 1; 
             ss.setSpan(new android.text.style.ForegroundColorSpan(Color.parseColor("#3D85C6")), start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             holder.tvContent.setText(ss);
             
@@ -125,6 +125,11 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
                         }
                     }
                 });
+
+        // Disable avatar click - do not navigate to profile
+        holder.imvAvatar.setClickable(false);
+        holder.imvAvatar.setFocusable(false);
+        holder.imvAvatar.setOnClickListener(null);
 
         // 3. Handle Like Status (TikTok Style Toggle)
         boolean isLikedLocally = likedMap.getOrDefault(commentId, false);
