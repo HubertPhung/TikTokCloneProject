@@ -9,51 +9,116 @@
     android:background="@color/dark_background"
     tools:context="com.example.tiktokcloneproject.activity.InboxActivity">
 
-    <ImageView
-        android:id="@+id/btnBack"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/ic_baseline_arrow_back_24"
-        android:padding="16dp"
-        android:tint="@color/dark_text_primary"
-        app:tint="@color/dark_text_primary"
-        android:contentDescription="Back" />
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:paddingHorizontal="16dp">
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_baseline_arrow_back_24"
+            android:contentDescription="Back"
+            app:tint="@color/dark_text_primary" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="Hộp thư"
+            android:textColor="@color/dark_text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_search"
+            app:tint="@color/dark_text_primary" />
+    </RelativeLayout>
 
-    <FrameLayout
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
-        <ListView
-            android:id="@+id/lvNotifications"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/dark_background"
-            android:scrollbarSize="3dp"
-            android:padding="8dp"
-            />
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center"
-            android:id="@+id/blank_notification">
-            <ImageView
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="20dp"
-                android:src="@drawable/ic_blank"></ImageView>
-            <TextView
-                android:layout_width="200dp"
-                android:layout_height="wrap_content"
-                android:textAlignment="center"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:text="Trạng thái"
                 android:textColor="@color/dark_text_secondary"
-                android:fontFamily="@font/montserrat_bold"
-                android:text="You don't have any notification yet"
-                android:textSize="14dp"></TextView>
+                android:textSize="14sp"
+                android:textStyle="bold" />
 
+            <!-- Active Users Horizontal List (UI only for now) -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvActiveUsers"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_active_user"
+                android:paddingVertical="8dp"
+                android:clipToPadding="false"
+                android:paddingHorizontal="8dp"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/dark_divider"
+                android:layout_marginHorizontal="16dp"/>
+
+            <!-- Notification List -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="400dp">
+
+                <LinearLayout
+                    android:id="@+id/blank_notification"
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+                    <ImageView
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:src="@drawable/ic_inbox"
+                        app:tint="@color/dark_text_secondary" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Chưa có tin nhắn nào"
+                        android:textColor="@color/dark_text_secondary"
+                        android:layout_marginTop="12dp"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <ListView
+                    android:id="@+id/lvNotifications"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/dark_background"
+                    android:nestedScrollingEnabled="false"
+                    android:divider="@null"
+                    android:paddingHorizontal="8dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:scrollbarSize="3dp"/>
+            </FrameLayout>
         </LinearLayout>
-    </FrameLayout>
+    </androidx.core.widget.NestedScrollView>
 
     <FrameLayout
         android:id="@+id/flNavigation"

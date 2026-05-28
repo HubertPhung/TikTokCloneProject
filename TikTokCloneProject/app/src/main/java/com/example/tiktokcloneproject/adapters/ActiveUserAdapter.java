@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
+import com.example.tiktokcloneproject.activity.ChatActivity;
 import com.example.tiktokcloneproject.activity.ProfileActivity;
 import com.example.tiktokcloneproject.model.User;
 
@@ -46,6 +47,14 @@ public class ActiveUserAdapter extends RecyclerView.Adapter<ActiveUserAdapter.Vi
         } else {
             holder.profile_image.setImageResource(R.drawable.default_avatar);
         }
+
+        holder.profile_image.setOnClickListener(v -> {
+            Intent intent = new Intent(mContext, ChatActivity.class);
+            intent.putExtra("receiver_id", user.getUserId());
+            intent.putExtra("receiver_name", user.getUsername());
+            intent.putExtra("receiver_avatar", user.getAvatarUrl());
+            mContext.startActivity(intent);
+        });
 
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(mContext, ProfileActivity.class);
