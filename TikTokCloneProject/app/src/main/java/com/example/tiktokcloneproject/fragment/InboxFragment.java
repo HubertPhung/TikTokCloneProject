@@ -63,6 +63,14 @@ public class InboxFragment extends Fragment {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
+        View btnNotifications = view.findViewById(R.id.btnNotifications);
+        if (btnNotifications != null) {
+            btnNotifications.setOnClickListener(v -> {
+                android.content.Intent intent = new android.content.Intent(getContext(), com.example.tiktokcloneproject.activity.InboxActivity.class);
+                startActivity(intent);
+            });
+        }
+
         rvActiveUsers = view.findViewById(R.id.rvActiveUsers);
         if (rvActiveUsers != null) {
             rvActiveUsers.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));

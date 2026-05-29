@@ -64,12 +64,24 @@ export function Reports() {
     return () => unsubscribe();
   }, []);
 
-  const handleResolve = async (reportId: string) => {
+  const handleResolve = async (report: Report) => {
     try {
-      await updateDoc(doc(db, 'reports', reportId), {
+      await updateDoc(doc(db, 'reports', report.id), {
         status: 'resolved',
         handledBy: adminName,
       });
+
+      if (report.targetType === 'video') {
+        try {
+          await updateDoc(doc(db, 'videos', report.targetId), {
+            moderationStatus: 'rejected',
+            rejectedReason: `Bị gỡ do vi phạm: ${report.reason}`,
+            reviewedBy: adminName,
+          });
+        } catch (videoErr) {
+          console.error('Error auto-rejecting video:', videoErr);
+        }
+      }
     } catch (err) {
       console.error('Error resolving report:', err);
       alert('Lỗi khi xử lý báo cáo!');
@@ -319,9 +331,9 @@ export function Reports() {
                       {report.status === 'pending' && user?.role !== 'viewer' && (
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => handleResolve(report.id)}
+                            onClick={() => handleResolve(report)}
                             className="p-1.5 text-on-surface-variant hover:text-secondary-container hover:bg-secondary-container/10 rounded transition-colors"
-                            title="Đánh dấu đã xử lý"
+                            title="Xử lý và gỡ video"
                           >
                             <CheckCircle className="w-5 h-5" />
                           </button>

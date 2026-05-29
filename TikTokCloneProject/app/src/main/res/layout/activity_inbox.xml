@@ -27,17 +27,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="Hộp thư"
+            android:text="Thông báo"
             android:textColor="@color/dark_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:src="@drawable/ic_search"
-            app:tint="@color/dark_text_primary" />
     </RelativeLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -58,7 +51,8 @@
                 android:text="Trạng thái"
                 android:textColor="@color/dark_text_secondary"
                 android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textStyle="bold" 
+                android:visibility="gone" />
 
             <!-- Active Users Horizontal List (UI only for now) -->
             <androidx.recyclerview.widget.RecyclerView
@@ -70,13 +64,15 @@
                 tools:listitem="@layout/item_active_user"
                 android:paddingVertical="8dp"
                 android:clipToPadding="false"
-                android:paddingHorizontal="8dp"/>
+                android:paddingHorizontal="8dp"
+                android:visibility="gone" />
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:background="@color/dark_divider"
-                android:layout_marginHorizontal="16dp"/>
+                android:layout_marginHorizontal="16dp"
+                android:visibility="gone" />
 
             <!-- Notification List -->
             <FrameLayout
@@ -124,5 +120,6 @@
         android:id="@+id/flNavigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fitsSystemWindows="true"/>
+        android:fitsSystemWindows="true"
+        android:visibility="gone"/>
 </LinearLayout>

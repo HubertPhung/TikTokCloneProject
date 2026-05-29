@@ -72,6 +72,11 @@ public class NotificationAdapter extends ArrayAdapter<Notification> {
     }
 
     private String handleAction(String action) {
+        if (action != null && action.startsWith("APPEAL_REQUEST")) {
+            String[] parts = action.split("\\|");
+            String reason = parts.length > 2 ? parts[2] : "Vi phạm tiêu chuẩn cộng đồng";
+            return "Video bị tố cáo vì: " + reason + ". Bấm vào đây để kháng cáo.";
+        }
         switch (action) {
             case StaticVariable.COMMENT:
                 return context.getString(R.string.template_comment);

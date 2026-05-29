@@ -80,6 +80,17 @@ public class InboxActivity extends FragmentActivity {
                 notifications);
         lvNotifications.setAdapter(adapter);
 
+        lvNotifications.setOnItemClickListener((parent, view, position, id) -> {
+            Notification notif = notifications.get(position);
+            if (notif.getAction() != null && notif.getAction().startsWith("APPEAL_REQUEST")) {
+                String[] parts = notif.getAction().split("\\|");
+                if (parts.length > 1) {
+                    String reportId = parts[1];
+                    showAppealDialog(reportId);
+                }
+            }
+        });
+
         ft = getSupportFragmentManager().beginTransaction();
         navigation = NavigationFragment.newInstance("navigation");
         ft.replace(R.id.flNavigation, navigation);
@@ -212,6 +223,42 @@ public class InboxActivity extends FragmentActivity {
                 if (activeUserAdapter != null) activeUserAdapter.notifyDataSetChanged();
             }
         });
+    }
+
+    private void showAppealDialog(String reportId) {
+        FirebaseFirestore.getInstance().collection("reports").document(reportId).get()
+            .addOnSuccessListener(documentSnapshot -> {
+                if (!documentSnapshot.exists()) return;
+                String currentAppeal = documentSnapshot.getString("appeal");
+                if (currentAppeal != null && !currentAppeal.isEmpty()) {
+                    android.widget.Toast.makeText(this, "Bạn đã gửi kháng cáo cho báo cáo này rồi.", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                
+                android.widget.EditText input = new android.widget.EditText(this);
+                input.setHint("Nhập lý do kháng cáo của bạn...");
+                input.setPadding(40, 40, 40, 40);
+                
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Kháng cáo vi phạm")
+                    .setMessage("Vui lòng giải thích để quản trị viên xem xét lại.")
+                    .setView(input)
+                    .setPositiveButton("Gửi", (dialog, which) -> {
+                        String appealText = input.getText().toString().trim();
+                        if (!appealText.isEmpty()) {
+                            Map<String, Object> updates = new HashMap<>();
+                            updates.put("appeal", appealText);
+                            updates.put("status", "pending");
+                            
+                            FirebaseFirestore.getInstance().collection("reports").document(reportId)
+                                .update(updates)
+                                .addOnSuccessListener(aVoid -> android.widget.Toast.makeText(InboxActivity.this, "Đã gửi kháng cáo!", android.widget.Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> android.widget.Toast.makeText(InboxActivity.this, "Lỗi khi gửi", android.widget.Toast.LENGTH_SHORT).show());
+                        }
+                    })
+                    .setNegativeButton("Hủy", null)
+                    .show();
+            });
     }
 
     @Override

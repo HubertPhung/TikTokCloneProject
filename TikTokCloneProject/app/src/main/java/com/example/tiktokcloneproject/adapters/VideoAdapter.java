@@ -87,6 +87,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     private static boolean isMuted = false;
     private ExoPlayer sharedPlayer;
     private VideoViewHolder currentPlayingHolder;
+    private boolean isManuallyPaused = false;
 
     public VideoAdapter(Context context, List<Video> videos) {
         this.context = context;
@@ -166,17 +167,30 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     @Override
     public int getItemCount() { return videos != null ? videos.size() : 0; }
 
-    public void updateCurrentPosition(int pos) { this.currentPosition = pos; }
+    public void updateCurrentPosition(int pos) { 
+        this.currentPosition = pos; 
+        this.isManuallyPaused = false; // Reset when switching videos
+    }
 
     public int getCurrentPosition() { return currentPosition; }
     
     public void pauseVideo(int position) {
+        if (sharedPlayer != null) {
+            sharedPlayer.setPlayWhenReady(false);
+        }
         for (VideoViewHolder holder : activeHolders) {
             if (holder.getBindingAdapterPosition() == position) holder.pauseVideo();
         }
     }
 
+    public void resumeVideo() {
+        if (sharedPlayer != null && !isManuallyPaused) {
+            sharedPlayer.setPlayWhenReady(true);
+        }
+    }
+
     public void playVideo(int position) {
+        this.isManuallyPaused = false;
         for (VideoViewHolder holder : activeHolders) {
             if (holder.getBindingAdapterPosition() == position) holder.playVideo();
         }
@@ -256,8 +270,10 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 public void onSingleTap() {
                     ExoPlayer player = getSharedPlayer(itemView.getContext());
                     if (videoView.getPlayer() == player && player.isPlaying()) {
+                        isManuallyPaused = true;
                         pauseVideo();
                     } else {
+                        isManuallyPaused = false;
                         playVideo();
                     }
                 }
@@ -312,6 +328,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         public void pauseVideoInternal() {
             ExoPlayer player = getSharedPlayer(itemView.getContext());
             player.removeListener(playerListener);
+            player.setPlayWhenReady(false); // Fix: Actually pause the player when detached
             if (videoView.getPlayer() == player) {
                 videoView.setPlayer(null);
             }
@@ -646,6 +663,13 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
             FirebaseFirestore.getInstance().collection("reports").document(reportId).set(report.toMap())
                 .addOnSuccessListener(aVoid -> {
                     Toast.makeText(context, "Báo cáo thành công!", Toast.LENGTH_SHORT).show();
+                    if (authorId != null && !authorId.isEmpty()) {
+                        com.example.tiktokcloneproject.model.Notification.pushNotification(
+                            "Hệ thống", 
+                            authorId, 
+                            "APPEAL_REQUEST|" + reportId + "|" + reason
+                        );
+                    }
                 });
         }
 

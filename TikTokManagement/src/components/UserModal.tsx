@@ -117,45 +117,7 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
             </div>
           </div>
 
-          {/* Actions & Settings */}
-          <div className="space-y-4 pt-4 border-t border-outline-variant/10">
-            <h4 className="text-lg font-headline font-semibold text-on-surface mb-4">Cài đặt hệ thống</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Role Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-label text-on-surface-variant">Phân quyền</label>
-                <select 
-                  value={user.role}
-                  onChange={(e) => onUpdateRole(user.userId, e.target.value as UserRole)}
-                  className="w-full bg-surface border border-outline-variant/20 text-on-surface font-label text-sm p-3 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
-                >
-                  <option value="user">Người dùng (User)</option>
-                  <option value="viewer">Xem báo cáo (Viewer)</option>
-                  <option value="moderator">Kiểm duyệt viên (Moderator)</option>
-                  <option value="admin">Quản trị viên (Admin)</option>
-                </select>
-              </div>
 
-              {/* Status Selection */}
-              <div className="space-y-2">
-                <label className="text-sm font-label text-on-surface-variant">Trạng thái tài khoản</label>
-                <select 
-                  value={user.status}
-                  onChange={(e) => onUpdateStatus(user.userId, e.target.value as UserStatus)}
-                  className={clsx(
-                    "w-full border text-on-surface font-label text-sm p-3 rounded-lg outline-none focus:ring-1 transition-all",
-                    user.status === 'banned' ? "bg-error/5 border-error/30 focus:border-error focus:ring-error" : 
-                    "bg-surface border-outline-variant/20 focus:border-primary focus:ring-primary"
-                  )}
-                >
-                  <option value="active">Hoạt động bình thường</option>
-                  <option value="warned">Cảnh cáo</option>
-                  <option value="banned">Khóa tài khoản</option>
-                </select>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

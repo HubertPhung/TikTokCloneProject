@@ -106,7 +106,7 @@ public class VideoFragment extends Fragment {
     }
 
     public void continueVideo() {
-        if (videoAdapter != null) videoAdapter.playVideo(videoAdapter.getCurrentPosition());
+        if (videoAdapter != null) videoAdapter.resumeVideo();
     }
 
     public void scrollToTop() {
