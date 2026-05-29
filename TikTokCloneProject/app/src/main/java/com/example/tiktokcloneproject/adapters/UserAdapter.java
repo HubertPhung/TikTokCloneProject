@@ -56,6 +56,13 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.userItems> imp
         }
         holder.text_Username.setText(user.getUsername());
         
+        if (user.getEmail() != null && !user.getEmail().isEmpty()) {
+            holder.text_Email.setText(user.getEmail());
+            holder.text_Email.setVisibility(View.VISIBLE);
+        } else {
+            holder.text_Email.setVisibility(View.GONE);
+        }
+        
         // Load avatar using Glide
         if (mainContext != null) {
             Glide.with(mainContext)
@@ -89,6 +96,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.userItems> imp
 
     public class userItems extends RecyclerView.ViewHolder{
         private TextView text_Username;
+        private TextView text_Email;
         private LinearLayout layout_items;
         private CircleImageView imv_user_avatar;
 
@@ -96,6 +104,7 @@ public class UserAdapter extends RecyclerView.Adapter<UserAdapter.userItems> imp
         public userItems(@NonNull View itemView) {
             super(itemView);
             text_Username=(TextView) itemView.findViewById(R.id.text_Username);
+            text_Email=(TextView) itemView.findViewById(R.id.text_Email);
             layout_items=(LinearLayout) itemView.findViewById(R.id.layout_items);
             imv_user_avatar=(CircleImageView) itemView.findViewById(R.id.imv_user_avatar);
 
