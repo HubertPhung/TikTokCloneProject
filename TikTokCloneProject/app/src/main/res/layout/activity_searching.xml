@@ -41,6 +41,7 @@
             app:queryBackground="@null"
             app:submitBackground="@null"
             app:queryHint="Tìm kiếm..."
+            android:textColor="@android:color/darker_gray"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"/>
 

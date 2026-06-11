@@ -20,7 +20,7 @@
         android:background="@drawable/bg_chat_left"
         android:padding="10dp"
         android:text="Message"
-        android:textColor="@color/dark_text_primary"
+        android:textColor="@color/light_text_primary"
         android:textColorLink="#3897f0"
         android:textSize="14sp" />
 </LinearLayout>

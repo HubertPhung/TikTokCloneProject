@@ -1,0 +1,167 @@
+// ignore_for_file: prefer_initializing_formals
+import 'dart:async';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import '../../../core/constants/app_constants.dart';
+
+/// Request tùy chỉnh kế thừa từ http.MultipartRequest để giám sát tiến độ tải lên
+class MultipartRequestWithProgress extends http.MultipartRequest {
+  final void Function(int bytesUploaded, int totalBytes) onProgress;
+
+  MultipartRequestWithProgress(
+    super.method,
+    super.url, {
+    required this.onProgress,
+  });
+
+  @override
+  http.ByteStream finalize() {
+    final byteStream = super.finalize();
+    final total = contentLength;
+    int bytesUploaded = 0;
+
+    final transformer = StreamTransformer<List<int>, List<int>>.fromHandlers(
+      handleData: (data, sink) {
+        bytesUploaded += data.length;
+        onProgress(bytesUploaded, total);
+        sink.add(data);
+      },
+    );
+
+    return http.ByteStream(byteStream.transform(transformer));
+  }
+}
+
+/// Repository xử lý việc tải video lên Cloudinary và lưu siêu dữ liệu video lên Firestore
+class UploadRepository {
+  final FirebaseFirestore _firestore;
+
+  UploadRepository({
+    required FirebaseFirestore firestore,
+  }) : _firestore = firestore;
+
+  /// Tải video cục bộ lên Cloudinary bằng REST API và báo tiến trình tải lên từ 0.0 -> 1.0
+  Future<String> uploadVideoToCloudinary({
+    required String filePath,
+    required void Function(double progress) onProgress,
+  }) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw Exception('Tệp video không tồn tại tại: $filePath');
+    }
+
+    final url = Uri.parse(
+      'https://api.cloudinary.com/v1_1/${AppConstants.cloudinaryCloudName}/video/upload',
+    );
+
+    final request = MultipartRequestWithProgress(
+      'POST',
+      url,
+      onProgress: (uploaded, total) {
+        if (total > 0) {
+          final fraction = uploaded / total;
+          // Giới hạn trong khoảng 0.0 đến 1.0
+          onProgress(fraction.clamp(0.0, 1.0));
+        }
+      },
+    );
+
+    // Thêm các tham số unsigned upload preset
+    request.fields['upload_preset'] = 'toptopclone';
+    
+    // Đính kèm tệp video
+    final multipartFile = await http.MultipartFile.fromPath('file', filePath);
+    request.files.add(multipartFile);
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Thành công, giải mã URL phản hồi
+      // Cloudinary trả về JSON có chứa trường "secure_url"
+      final data = response.body;
+      final match = RegExp(r'"secure_url"\s*:\s*"([^"]+)"').firstMatch(data);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1)!;
+      }
+      throw Exception('Không tìm thấy secure_url trong phản hồi từ Cloudinary.');
+    } else {
+      throw Exception(
+        'Tải video thất bại với mã trạng thái: ${response.statusCode}. Phản hồi: ${response.body}',
+      );
+    }
+  }
+
+  /// Đồng bộ lưu trữ siêu dữ liệu video lên các bảng Firestore tương ứng
+  Future<void> saveVideoToFirestore({
+    required String videoId,
+    required String videoUrl,
+    required String description,
+    required String authorId,
+    required String username,
+    required List<String> hashtags,
+  }) async {
+    // 1. Tạo bản ghi video gốc trong bộ sưu tập "videos"
+    final videoData = {
+      'videoId': videoId,
+      'videoUri': videoUrl,
+      'authorId': authorId,
+      'username': username,
+      'description': description,
+      'totalLikes': 0,
+      'totalComments': 0,
+      'watchCount': 0,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'moderationStatus': 'pending', // Mặc định chờ kiểm duyệt
+      'hashtags': hashtags,
+    };
+
+    await _firestore
+        .collection(AppConstants.videosCollection)
+        .doc(videoId)
+        .set(videoData);
+
+    // 2. Tạo URL ảnh bìa tự động bằng tính năng thay đổi định dạng của Cloudinary
+    String thumbUrl = 'https://picsum.photos/200/300'; // Dự phòng
+    if (videoUrl.contains('cloudinary.com')) {
+      thumbUrl = videoUrl.replaceAll('.mp4', '.jpg');
+      if (thumbUrl.contains('/upload/')) {
+        // Tải ảnh xem trước từ giây thứ 0
+        thumbUrl = thumbUrl.replaceAll('/upload/', '/upload/so_0/');
+      }
+    }
+
+    final summaryData = {
+      'videoId': videoId,
+      'thumbnailUri': thumbUrl,
+      'watchCount': 0,
+    };
+
+    // 3. Lưu bản ghi tóm tắt vào collection video_summaries
+    await _firestore
+        .collection('video_summaries')
+        .doc(videoId)
+        .set(summaryData);
+
+    // 4. Đồng bộ lưu vào danh sách video công khai của hồ sơ người dùng
+    await _firestore
+        .collection(AppConstants.profilesCollection)
+        .doc(authorId)
+        .collection('public_videos')
+        .doc(videoId)
+        .set(summaryData);
+
+    // 5. Lưu thông tin chỉ mục hashtag để tìm kiếm thuận tiện
+    final batch = _firestore.batch();
+    for (final tag in hashtags) {
+      final hashtagRef = _firestore.collection('hashtags').doc();
+      batch.set(hashtagRef, {
+        'hashtag': tag,
+        'videoId': videoId,
+        'thumbnailUri': thumbUrl,
+      });
+    }
+    await batch.commit();
+  }
+}

@@ -35,3 +35,15 @@ TikTokManagement/.env
 # Custom redirect page repo
 toptop-share-page/
 
+# Flutter specific ignores
+toptop_flutter/.dart_tool/
+toptop_flutter/.flutter-plugins
+toptop_flutter/.flutter-plugins-dependencies
+toptop_flutter/.pub-cache/
+toptop_flutter/.pub/
+toptop_flutter/build/
+toptop_flutter/android/local.properties
+toptop_flutter/android/key.properties
+toptop_flutter/ios/Flutter/Generated.xcconfig
+toptop_flutter/ios/Flutter/flutter_export_environment.sh
+

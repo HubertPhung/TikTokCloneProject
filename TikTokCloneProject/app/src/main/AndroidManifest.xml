@@ -36,6 +36,7 @@
             android:exported="false" />
         <activity
             android:name=".activity.VideoActivity"
+            android:theme="@style/Theme.TikTokCloneProject.Dark"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -59,6 +60,7 @@
         </activity>
         <activity
             android:name=".activity.VideoHomeScreenActivity"
+            android:theme="@style/Theme.TikTokCloneProject.Dark"
             android:exported="false"
             android:launchMode="singleTask"/>
         <activity
@@ -75,6 +77,7 @@
             android:exported="false" />
         <activity
             android:name=".activity.HomeScreenActivity"
+            android:theme="@style/Theme.TikTokCloneProject.Dark"
             android:exported="false" />
         <activity
             android:name=".activity.EmailSignInActivity"
@@ -101,6 +104,7 @@
             android:exported="false" />
         <activity
             android:name=".activity.DescriptionVideoActivity"
+            android:theme="@style/Theme.TikTokCloneProject.Dark"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
@@ -163,6 +167,7 @@
             android:exported="false" />
         <activity
             android:name=".activity.CameraActivity"
+            android:theme="@style/Theme.TikTokCloneProject.Dark"
             android:exported="false" />
         <activity
             android:name=".activity.CommentActivity"

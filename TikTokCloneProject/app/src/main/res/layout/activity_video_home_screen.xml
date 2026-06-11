@@ -85,6 +85,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center">
+
             <Button
                 android:id="@+id/btnAddVideo"
                 android:layout_width="52dp"
@@ -92,11 +93,11 @@
                 android:layout_marginRight="8dp"
                 android:layout_marginBottom="1dp"
                 android:background="@drawable/btn_add_shape"
+                android:fontFamily="@font/montserrat_extralight"
                 android:onClick="onClick"
                 android:text="@string/ic_add"
-                android:textSize="12dp"
-                android:fontFamily="@font/montserrat_extralight"
-                android:textColor="@color/tiktok_black" />
+                android:textColor="@color/tiktok_black"
+                android:textSize="12dp" />
 
         </LinearLayout>
 

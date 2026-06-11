@@ -83,19 +83,4 @@ public class User implements Serializable {
     @PropertyName("likes")
     public void setLikes(long likes) { this.likes = likes; }
 
-
-
-    public Map<String, Object> toMap() {
-        HashMap<String, Object> result = new HashMap<>();
-        result.put("userId", userId);
-        result.put("username", username);
-        result.put("avatarUrl", avatarUrl);
-        result.put("email", email);
-        result.put("phone", phone);
-        result.put("isPrivate", isPrivate);
-        result.put("followers", followers);
-        result.put("following", following);
-        result.put("likes", likes);
-        return result;
-    }
 }

@@ -26,4 +26,11 @@
     <color name="dark_divider">#2C2C2E</color>
     <color name="dark_text_primary">#FFFFFF</color>
     <color name="dark_text_secondary">#B3B3B3</color>
+    
+    <!-- Light Mode Colors -->
+    <color name="light_background">#FFFFFF</color>
+    <color name="light_surface">#F5F5F5</color>
+    <color name="light_divider">#E0E0E0</color>
+    <color name="light_text_primary">#1C1C1E</color>
+    <color name="light_text_secondary">#8A8A8E</color>
 </resources>

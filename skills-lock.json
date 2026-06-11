@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "flutter-expert": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/flutter-expert/SKILL.md",
+      "computedHash": "61576502258becd1bd2d81d77997cc1ec2bc0e90f1bf9019bb361a6fd2fb6dcb"
+    }
+  }
+}

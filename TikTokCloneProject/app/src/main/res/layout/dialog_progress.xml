@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:padding="20dp"
     android:gravity="center"
-    android:background="@color/dark_surface"
+    android:background="@color/light_surface"
     android:layout_gravity="center">
     <ProgressBar
         android:layout_width="wrap_content"
@@ -18,6 +18,6 @@
         android:layout_height="wrap_content"
         android:layout_weight="4"
         android:gravity="center"
-        android:textColor="@color/dark_text_primary"
+        android:textColor="@color/light_text_primary"
         android:text="Please wait! This may take a moment." />
 </LinearLayout>

@@ -26,30 +26,30 @@ export async function moderateVideoContent(
   const cleanUser = (username || '').replace(/"/g, "'").trim();
 
   const prompt = `Bạn là hệ thống kiểm duyệt nội dung của nền tảng video ngắn (tương tự TikTok). 
-Hãy phân tích mô tả video sau và đánh giá xem có vi phạm tiêu chuẩn cộng đồng không.
+    Hãy phân tích mô tả video sau và đánh giá xem có vi phạm tiêu chuẩn cộng đồng không.
 
-Tiêu chuẩn cộng đồng bao gồm:
-1. Không nội dung bạo lực, đe dọa, tự gây hại
-2. Không nội dung khiêu dâm, khỏa thân, gợi dục
-3. Không spam, lừa đảo, quảng cáo sai sự thật
-4. Không phân biệt đối xử, phát ngôn thù ghét
-5. Không xâm phạm quyền riêng tư
-6. Không nội dung vi phạm bản quyền
-7. Không quảng bá ma túy, chất cấm, vũ khí
-8. Không thông tin sai lệch nguy hiểm
+    Tiêu chuẩn cộng đồng bao gồm:
+    1. Không nội dung bạo lực, đe dọa, tự gây hại
+    2. Không nội dung khiêu dâm, khỏa thân, gợi dục
+    3. Không spam, lừa đảo, quảng cáo sai sự thật
+    4. Không phân biệt đối xử, phát ngôn thù ghét
+    5. Không xâm phạm quyền riêng tư
+    6. Không nội dung vi phạm bản quyền
+    7. Không quảng bá ma túy, chất cấm, vũ khí
+    8. Không thông tin sai lệch nguy hiểm
 
-Thông tin video:
-- Người đăng: @${cleanUser}
-- Mô tả: "${cleanDesc}"
+    Thông tin video:
+    - Người đăng: @${cleanUser}
+    - Mô tả: "${cleanDesc}"
 
-Trả lời theo định dạng JSON (không có markdown block):
-{
-  "isViolation": true/false,
-  "confidence": <số từ 0-100>,
-  "category": "<loại vi phạm hoặc 'none'>",
-  "reason": "<lý do ngắn gọn bằng tiếng Việt>",
-  "details": "<phân tích chi tiết bằng tiếng Việt>"
-}`;
+    Trả lời theo định dạng JSON (không có markdown block):
+    {
+      "isViolation": true/false,
+      "confidence": <số từ 0-100>,
+      "category": "<loại vi phạm hoặc 'none'>",
+      "reason": "<lý do ngắn gọn bằng tiếng Việt>",
+      "details": "<phân tích chi tiết bằng tiếng Việt>"
+    }`;
 
   try {
     const response = await fetch(GEMINI_API_URL, {
@@ -115,7 +115,7 @@ Trả lời theo định dạng JSON (không có markdown block):
     };
   } catch (err: any) {
     console.warn('Gemini AI Moderation failed. Falling back to local offline keyword filter. Error:', err);
-    
+
     // BỘ KIỂM DUYỆT OFFLINE DỰ PHÒNG CHUYÊN NGHIỆP (Local Offline Moderation)
     // Hệ thống sẽ quét các từ khóa nhạy cảm để đưa ra quyết định duyệt tức thì mà không cần qua API
     const lowerDesc = cleanDesc.toLowerCase();

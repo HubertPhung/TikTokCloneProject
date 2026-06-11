@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="?attr/colorPrimary"
     tools:context=".activity.DeleteAccountActivity">
 
     <ImageView
@@ -13,6 +14,8 @@
         android:layout_height="wrap_content"
         android:src="@drawable/ic_baseline_arrow_back_24"
         android:padding="16dp"
+        android:tint="?attr/colorOnPrimary"
+        app:tint="?attr/colorOnPrimary"
         android:contentDescription="Back" />
 
     <FrameLayout

@@ -10,6 +10,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
 import com.example.tiktokcloneproject.R;
 import com.example.tiktokcloneproject.model.User;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -20,6 +21,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 
@@ -38,6 +40,7 @@ public class FollowActivity extends Activity {
     Bitmap bitmap;
     String currentUserID, userId;
     boolean isFollowed;
+    private ListenerRegistration profileListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,6 +122,11 @@ public class FollowActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (currentUser == null) {
+                    Intent intent = new Intent(FollowActivity.this, MainActivity.class);
+                    startActivity(intent);
+                    return;
+                }
                 Map<String, Object> Data = new HashMap<>();
                 Data.put("userID", userId);
 
@@ -128,6 +136,7 @@ public class FollowActivity extends Activity {
                         .addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
+                                syncFollowCounts(currentUserID);
                                 handleFollowed();
                             }
                         });
@@ -136,7 +145,25 @@ public class FollowActivity extends Activity {
                 Data1.put("userID", currentUserID);
                 db.collection("profiles").document(userId)
                         .collection("followers").document(currentUserID)
-                        .set(Data1);
+                        .set(Data1)
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                syncFollowCounts(userId);
+                                
+                                // Gửi thông báo Follow
+                                db.collection("profiles").document(currentUserID).get().addOnSuccessListener(doc -> {
+                                    if (doc.exists()) {
+                                        String name = doc.getString("username");
+                                        com.example.tiktokcloneproject.model.Notification.pushNotification(
+                                            name != null ? name : "Ai đó", 
+                                            userId, 
+                                            com.example.tiktokcloneproject.helper.StaticVariable.FOLLOW
+                                        );
+                                    }
+                                });
+                            }
+                        });
             }
         });
     }
@@ -146,21 +173,90 @@ public class FollowActivity extends Activity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if (currentUser == null) return;
                 db.collection("profiles").document(currentUserID)
                         .collection("following").document(userId)
                         .delete()
                         .addOnSuccessListener(new OnSuccessListener<Void>() {
                             @Override
                             public void onSuccess(Void aVoid) {
+                                syncFollowCounts(currentUserID);
                                 handleUnfollowed();
                             }
                         });
 
                 db.collection("profiles").document(userId)
                         .collection("followers").document(currentUserID)
-                        .delete();
+                        .delete()
+                        .addOnSuccessListener(new OnSuccessListener<Void>() {
+                            @Override
+                            public void onSuccess(Void aVoid) {
+                                syncFollowCounts(userId);
+                            }
+                        });
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        loadProfileData();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (profileListener != null) {
+            profileListener.remove();
+            profileListener = null;
+        }
+    }
+
+    private void loadProfileData() {
+        if (userId != null && !userId.isEmpty()) {
+            syncFollowCounts(userId);
+        }
+        DocumentReference docRef = db.collection("profiles").document(userId);
+        profileListener = docRef.addSnapshotListener((document, e) -> {
+            if (e != null) {
+                return;
+            }
+            if (document != null && document.exists()) {
+                if (txvFollowing != null) {
+                    txvFollowing.setText(String.valueOf(document.get("following") != null ? document.get("following") : 0));
+                }
+                if (txvFollowers != null) {
+                    txvFollowers.setText(String.valueOf(document.get("followers") != null ? document.get("followers") : 0));
+                }
+                if (txvLikes != null) {
+                    txvLikes.setText(String.valueOf(document.get("likes") != null ? document.get("likes") : 0));
+                }
+                
+                String avatarUrl = document.getString("avatarUrl");
+                if (avatarUrl != null && !avatarUrl.isEmpty() && imvAvatarProfile != null) {
+                    Glide.with(this)
+                            .load(avatarUrl)
+                            .placeholder(R.drawable.default_avatar)
+                            .circleCrop()
+                            .into(imvAvatarProfile);
+                }
+            }
+        });
+    }
+
+    private void syncFollowCounts(String uid) {
+        if (uid == null || uid.isEmpty()) return;
+        db.collection("profiles").document(uid).collection("followers").get()
+            .addOnSuccessListener(queryDocumentSnapshots -> {
+                int count = queryDocumentSnapshots != null ? queryDocumentSnapshots.size() : 0;
+                db.collection("profiles").document(uid).update("followers", count);
+            });
+        db.collection("profiles").document(uid).collection("following").get()
+            .addOnSuccessListener(queryDocumentSnapshots -> {
+                int count = queryDocumentSnapshots != null ? queryDocumentSnapshots.size() : 0;
+                db.collection("profiles").document(uid).update("following", count);
+            });
     }
 
     public void onClick(View v) {

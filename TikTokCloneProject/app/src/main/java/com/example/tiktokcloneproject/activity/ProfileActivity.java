@@ -209,10 +209,14 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
                     if (task.isSuccessful() && task.getResult() != null) {
                         videoSummaries.clear();
                         for (QueryDocumentSnapshot document : task.getResult()) {
+                            // KIỂM DUYỆT NỘI DUNG: Kiểm tra trạng thái phê duyệt của video
                             String modStatus = document.getString("moderationStatus");
+                            
+                            // 1. Ẩn hoàn toàn nếu video bị từ chối duyệt (rejected) do vi phạm chính sách
                             if ("rejected".equals(modStatus)) {
                                 continue;
                             }
+                            // 2. Ẩn video đang chờ duyệt (pending) đối với người xem khác (chỉ tác giả mới được thấy)
                             if ("pending".equals(modStatus) && (currentUserID == null || !currentUserID.equals(userId))) {
                                 continue;
                             }
@@ -349,13 +353,16 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
         }
     }
 
+    // QUẢN TRỊ NOSQL: Đồng bộ hóa số lượng Followers và Following từ sub-collections lên tài liệu Profile cha
     private void syncFollowCounts(String uid) {
         if (uid == null || uid.isEmpty()) return;
+        // Đếm số lượng người theo dõi (followers) trong sub-collection
         db.collection("profiles").document(uid).collection("followers").get()
             .addOnSuccessListener(queryDocumentSnapshots -> {
                 int count = queryDocumentSnapshots != null ? queryDocumentSnapshots.size() : 0;
                 db.collection("profiles").document(uid).update("followers", count);
             });
+        // Đếm số lượng người đang theo dõi (following) trong sub-collection
         db.collection("profiles").document(uid).collection("following").get()
             .addOnSuccessListener(queryDocumentSnapshots -> {
                 int count = queryDocumentSnapshots != null ? queryDocumentSnapshots.size() : 0;
@@ -413,6 +420,7 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
         loadProfileData();
     }
 
+    // QUẢN TRỊ NOSQL: Tính tổng lượt thích (Likes) của người dùng từ các video đã qua kiểm duyệt
     public void setLikes(String userId) {
         if (userId == null) return;
         db.collection("videos").whereEqualTo("authorId", userId).get().addOnCompleteListener(task -> {
@@ -420,6 +428,7 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
                 int count = 0;
                 for (QueryDocumentSnapshot document : task.getResult()) {
                     String modStatus = document.getString("moderationStatus");
+                    // Chỉ tính lượt thích của các video hợp lệ (không bị từ chối và không ở trạng thái chờ duyệt)
                     if (!"rejected".equals(modStatus) && !"pending".equals(modStatus)) {
                         Long videoLikes = document.getLong("totalLikes");
                         if (videoLikes != null) {
@@ -429,6 +438,7 @@ public class ProfileActivity extends FragmentActivity implements View.OnClickLis
                 }
                 totalLikes = count;
                 if (txvLikes != null) txvLikes.setText(String.valueOf(totalLikes));
+                // Cập nhật tổng số lượt thích vào tài liệu profile của người dùng trên Firestore
                 db.collection("profiles").document(userId).update("likes", totalLikes);
             }
         });

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     tools:context=".activity.SettingsAndPrivacyActivity"
-    android:background="@color/dark_background">
+    android:background="@color/light_background">
     <ImageView
         android:id="@+id/imvBackToVideo"
         android:layout_width="wrap_content"
@@ -15,14 +15,14 @@
         android:layout_margin="5dp"
         android:clickable="true"
         android:contentDescription="Go back to ProfileActivity"
-        android:tint="@color/white" />
+        android:tint="@color/light_text_primary" />
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Video Setting"
         android:textSize="25sp"
         android:textStyle="bold"
-        android:textColor="@color/white"
+        android:textColor="@color/light_text_primary"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="20dp"/>
 
@@ -30,14 +30,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Account"
-        android:textColor="@color/dark_text_secondary"
+        android:textColor="@color/light_text_secondary"
         android:layout_margin="20dp"/>
 
     <FrameLayout
         android:id="@+id/flDeleteVideo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/dark_surface"
+        android:background="@color/light_surface"
         android:padding="15dp">
         <LinearLayout
             android:layout_width="match_parent"
@@ -48,13 +48,13 @@
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_baseline_delete_24"
                 android:layout_gravity="center"
-                android:tint="@color/white" />
+                android:tint="@color/light_text_primary" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Delete a video"
                 android:layout_gravity="center"
-                android:textColor="@color/white"
+                android:textColor="@color/light_text_primary"
                 android:layout_marginStart="10dp"
                 android:textStyle="bold"/>
         </LinearLayout>
@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_baseline_keyboard_arrow_right_24"
             android:layout_gravity="end"
-            android:tint="@color/white" />
+            android:tint="@color/light_text_primary" />
     </FrameLayout>
 
 

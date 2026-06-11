@@ -27,6 +27,8 @@ import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -87,6 +89,8 @@ public class CommentActivity extends Activity implements View.OnClickListener{
     Handler handler = new Handler(Looper.getMainLooper());
 
     ArrayList<Comment> comments;
+    ArrayList<Comment> allComments = new ArrayList<>();
+    private HashSet<String> expandedComments = new HashSet<>();
 
 
 
@@ -171,17 +175,17 @@ public class CommentActivity extends Activity implements View.OnClickListener{
                             switch (dc.getType()) {
                                 case ADDED:
                                     if (index == -1) {
-                                        comments.add(0, comment);
+                                        allComments.add(comment);
                                     }
                                     break;
                                 case MODIFIED:
                                     if (index != -1) {
-                                        comments.set(index, comment);
+                                        allComments.set(index, comment);
                                     }
                                     break;
                                 case REMOVED:
                                     if (index != -1) {
-                                        comments.remove(index);
+                                        allComments.remove(index);
                                     }
                                     break;
                             }
@@ -235,8 +239,8 @@ public class CommentActivity extends Activity implements View.OnClickListener{
     }
 
     private int findCommentIndex(String id) {
-        for (int i = 0; i < comments.size(); i++) {
-            if (comments.get(i).getCommentId().equals(id)) return i;
+        for (int i = 0; i < allComments.size(); i++) {
+            if (allComments.get(i).getCommentId().equals(id)) return i;
         }
         return -1;
     }
@@ -261,7 +265,12 @@ public class CommentActivity extends Activity implements View.OnClickListener{
             String timeStamp = String.valueOf(System.currentTimeMillis());
             Comment comment = new Comment(timeStamp, videoId, userId, cmt);
             if (replyingToComment != null) {
-                comment.setParentId(replyingToComment.getCommentId());
+                // If replying to a reply, group under the top-level parent comment
+                if (replyingToComment.getParentId() != null && !replyingToComment.getParentId().isEmpty()) {
+                    comment.setParentId(replyingToComment.getParentId());
+                } else {
+                    comment.setParentId(replyingToComment.getCommentId());
+                }
                 comment.setParentUsername(replyingToUsername);
             }
             postComment(comment);
@@ -321,7 +330,7 @@ public class CommentActivity extends Activity implements View.OnClickListener{
         ArrayList<Comment> parents = new ArrayList<>();
         HashMap<String, ArrayList<Comment>> repliesMap = new HashMap<>();
         
-        for (Comment c : comments) {
+        for (Comment c : allComments) {
             if (c.getParentId() == null || c.getParentId().isEmpty()) {
                 parents.add(c);
             } else {
@@ -339,14 +348,43 @@ public class CommentActivity extends Activity implements View.OnClickListener{
         for (Comment parent : parents) {
             sorted.add(parent);
             ArrayList<Comment> replies = repliesMap.get(parent.getCommentId());
-            if (replies != null) {
+            if (replies != null && !replies.isEmpty()) {
                 Collections.sort(replies, (c1, c2) -> Long.compare(Long.parseLong(c1.getCommentId()), Long.parseLong(c2.getCommentId())));
-                sorted.addAll(replies);
+                
+                String parentId = parent.getCommentId();
+                if (expandedComments.contains(parentId) || replies.size() <= 2) {
+                    sorted.addAll(replies);
+                    if (replies.size() > 2) {
+                        Comment collapseDummy = new Comment(parentId + "_collapse", videoId, "", "");
+                        collapseDummy.setParentId(parentId);
+                        sorted.add(collapseDummy);
+                    }
+                } else {
+                    sorted.add(replies.get(0));
+                    sorted.add(replies.get(1));
+                    
+                    Comment expandDummy = new Comment(parentId + "_expand", videoId, "", "");
+                    expandDummy.setParentId(parentId);
+                    expandDummy.setTotalReplies(replies.size());
+                    sorted.add(expandDummy);
+                }
             }
         }
         
         comments.clear();
         comments.addAll(sorted);
+    }
+
+    public void expandComment(String parentId) {
+        expandedComments.add(parentId);
+        sortComments();
+        adapter.notifyDataSetChanged();
+    }
+
+    public void collapseComment(String parentId) {
+        expandedComments.remove(parentId);
+        sortComments();
+        adapter.notifyDataSetChanged();
     }
 
     private void updateTotal() {

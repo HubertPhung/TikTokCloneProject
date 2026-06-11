@@ -66,7 +66,7 @@ public class EmailSignInActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_email_signin);
+        setContentView(R.layout.activity_email_loading);
 
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -173,14 +173,17 @@ public class EmailSignInActivity extends AppCompatActivity {
                             checkAndCreateProfile(uid, finalUsername, finalEmail, account);
                         });
             } else {
+                // BẢO MẬT: Kiểm tra trạng thái tài khoản của người dùng từ Firestore
                 String status = userTask.getResult().getString("status");
                 if ("banned".equals(status)) {
                     if (dialog != null) dialog.dismiss();
+                    // Đăng xuất khỏi Firebase Auth để hủy phiên đăng nhập
                     FirebaseAuth.getInstance().signOut();
                     Toast.makeText(this, "Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng.", Toast.LENGTH_LONG).show();
                     finish();
                     return;
                 }
+                // Nếu tài khoản hoạt động bình thường, tiến hành kiểm tra/tạo hồ sơ (profile)
                 checkAndCreateProfile(uid, finalUsername, finalEmail, account);
             }
         });

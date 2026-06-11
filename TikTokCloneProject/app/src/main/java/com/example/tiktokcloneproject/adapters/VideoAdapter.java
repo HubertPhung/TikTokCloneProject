@@ -579,6 +579,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 likeData.put(currentUid, true);
                 firestore.collection("likes").document(boundVideoId).set(likeData, com.google.firebase.firestore.SetOptions.merge());
                 firestore.collection("videos").document(boundVideoId).update("totalLikes", com.google.firebase.firestore.FieldValue.increment(1));
+                firestore.collection("profiles").document(authorId).update("likes", com.google.firebase.firestore.FieldValue.increment(1));
                 
                 // Gửi thông báo Like
                 firestore.collection("profiles").document(currentUid).get().addOnSuccessListener(doc -> {
@@ -596,6 +597,7 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
                 updates.put(currentUid, com.google.firebase.firestore.FieldValue.delete());
                 firestore.collection("likes").document(boundVideoId).update(updates);
                 firestore.collection("videos").document(boundVideoId).update("totalLikes", com.google.firebase.firestore.FieldValue.increment(-1));
+                firestore.collection("profiles").document(authorId).update("likes", com.google.firebase.firestore.FieldValue.increment(-1));
             }
         }
 

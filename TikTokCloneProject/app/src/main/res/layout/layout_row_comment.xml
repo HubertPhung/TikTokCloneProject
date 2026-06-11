@@ -30,7 +30,7 @@
             android:text="User Name"
             android:textStyle="bold"
             android:textSize="13sp"
-            android:textColor="@color/dark_text_primary" />
+            android:textColor="@color/light_text_primary" />
 
         <TextView
             android:id="@+id/txvComment"
@@ -40,13 +40,13 @@
             android:textSize="14sp"
             android:layout_marginTop="2dp"
             android:lineSpacingExtra="2dp"
-            android:textColor="@color/dark_text_primary" />
+            android:textColor="@color/light_text_primary" />
 
         <TextView
             android:id="@+id/txvReplyButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_text_secondary"
+            android:textColor="@color/light_text_secondary"
             android:textStyle="bold"
             android:textSize="11sp"
             android:layout_marginTop="6dp"
@@ -71,7 +71,7 @@
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:src="@drawable/ic_like"
-            app:tint="@color/dark_text_secondary"
+            app:tint="@color/light_text_secondary"
             android:clickable="true"
             android:focusable="true" />
 
@@ -79,7 +79,7 @@
             android:id="@+id/txvTotalLikeComment"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/dark_text_secondary"
+            android:textColor="@color/light_text_secondary"
             android:textSize="12sp"
             android:layout_marginTop="2dp"
             android:text="0" />

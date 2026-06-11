@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/dark_background">
+    android:background="@color/light_background">
 
     <!-- Header -->
     <RelativeLayout
@@ -19,13 +19,13 @@
             android:layout_alignParentStart="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_inbox"
-            app:tint="@color/dark_text_primary" />
+            app:tint="@color/light_text_primary" />
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
             android:text="Hộp thư"
-            android:textColor="@color/dark_text_primary"
+            android:textColor="@color/light_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
         <ImageView
@@ -35,7 +35,7 @@
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
             android:src="@drawable/ic_baseline_notifications_24"
-            app:tint="@color/dark_text_primary" />
+            app:tint="@color/light_text_primary" />
     </RelativeLayout>
 
     <androidx.core.widget.NestedScrollView
@@ -54,7 +54,7 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="8dp"
                 android:text="Trạng thái"
-                android:textColor="@color/dark_text_secondary"
+                android:textColor="@color/light_text_secondary"
                 android:textSize="14sp"
                 android:textStyle="bold" />
 
@@ -73,7 +73,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/dark_divider"
+                android:background="@color/light_divider"
                 android:layout_marginHorizontal="16dp"/>
 
             <!-- Chat List -->
@@ -93,12 +93,12 @@
                         android:layout_width="80dp"
                         android:layout_height="80dp"
                         android:src="@drawable/ic_inbox"
-                        app:tint="@color/dark_text_secondary" />
+                        app:tint="@color/light_text_secondary" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Chưa có tin nhắn nào"
-                        android:textColor="@color/dark_text_secondary"
+                        android:textColor="@color/light_text_secondary"
                         android:layout_marginTop="12dp"
                         android:textSize="14sp" />
                 </LinearLayout>
@@ -107,7 +107,7 @@
                     android:id="@+id/rvInboxChats"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@color/dark_background"
+                    android:background="@color/light_background"
                     android:nestedScrollingEnabled="false"
                     tools:listitem="@layout/item_chat_user" />
             </FrameLayout>

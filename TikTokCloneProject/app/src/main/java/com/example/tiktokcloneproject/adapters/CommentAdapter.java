@@ -74,6 +74,61 @@ public class CommentAdapter extends ArrayAdapter<Comment> {
         
         String commentId = comment.getCommentId();
 
+        // 0. Handle dummy expand/collapse rows
+        if (commentId != null && (commentId.endsWith("_expand") || commentId.endsWith("_collapse"))) {
+            holder.imvAvatar.setVisibility(View.GONE);
+            holder.tvUsername.setVisibility(View.GONE);
+            holder.imvLike.setVisibility(View.GONE);
+            holder.tvTotalLikes.setVisibility(View.GONE);
+            if (holder.tvReplyButton != null) holder.tvReplyButton.setVisibility(View.GONE);
+            
+            int padding48 = (int) (48 * context.getResources().getDisplayMetrics().density);
+            int padding8 = (int) (8 * context.getResources().getDisplayMetrics().density);
+            convertView.setPadding(padding48, padding8, padding8, padding8);
+            
+            if (commentId.endsWith("_expand")) {
+                int remaining = comment.getTotalReplies() - 2;
+                holder.tvContent.setText("— Xem thêm " + remaining + " câu trả lời...");
+                holder.tvContent.setTextColor(Color.parseColor("#3D85C6"));
+                holder.tvContent.setOnClickListener(v -> {
+                    if (context instanceof com.example.tiktokcloneproject.activity.CommentActivity) {
+                        ((com.example.tiktokcloneproject.activity.CommentActivity) context).expandComment(comment.getParentId());
+                    }
+                });
+            } else {
+                holder.tvContent.setText("— Thu gọn câu trả lời");
+                holder.tvContent.setTextColor(Color.parseColor("#3D85C6"));
+                holder.tvContent.setOnClickListener(v -> {
+                    if (context instanceof com.example.tiktokcloneproject.activity.CommentActivity) {
+                        ((com.example.tiktokcloneproject.activity.CommentActivity) context).collapseComment(comment.getParentId());
+                    }
+                });
+            }
+            
+            convertView.setOnClickListener(v -> {
+                if (commentId.endsWith("_expand")) {
+                    if (context instanceof com.example.tiktokcloneproject.activity.CommentActivity) {
+                        ((com.example.tiktokcloneproject.activity.CommentActivity) context).expandComment(comment.getParentId());
+                    }
+                } else {
+                    if (context instanceof com.example.tiktokcloneproject.activity.CommentActivity) {
+                        ((com.example.tiktokcloneproject.activity.CommentActivity) context).collapseComment(comment.getParentId());
+                    }
+                }
+            });
+            return convertView;
+        }
+
+        // Restore default visibilities for recycled views
+        holder.imvAvatar.setVisibility(View.VISIBLE);
+        holder.tvUsername.setVisibility(View.VISIBLE);
+        holder.imvLike.setVisibility(View.VISIBLE);
+        holder.tvTotalLikes.setVisibility(View.VISIBLE);
+        if (holder.tvReplyButton != null) holder.tvReplyButton.setVisibility(View.VISIBLE);
+        holder.tvContent.setTextColor(context.getResources().getColor(R.color.dark_text_primary));
+        holder.tvContent.setOnClickListener(null);
+        convertView.setOnClickListener(null);
+
         // 1. Init UI with data from model
         if (comment.getParentId() != null && !comment.getParentId().isEmpty() && comment.getParentUsername() != null) {
             String text = "@" + comment.getParentUsername() + ": " + comment.getContent();

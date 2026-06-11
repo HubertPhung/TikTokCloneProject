@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     tools:context=".fragment.FollowersListFragment"
     android:orientation="vertical"
-    android:background="@color/dark_background">
+    android:background="@color/light_background">
 
     <!-- TODO: Update blank fragment layout -->
     <ListView

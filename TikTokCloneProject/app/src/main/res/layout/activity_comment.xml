@@ -6,13 +6,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/llComment"
     android:orientation="vertical"
-    android:background="@color/dark_background">
+    android:background="@color/light_background">
 
     <RelativeLayout
         android:id="@+id/layoutCommentToolbar"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:background="@color/dark_background"
+        android:background="@color/light_background"
         android:paddingHorizontal="12dp">
 
         <ImageView
@@ -22,8 +22,8 @@
             android:layout_centerVertical="true"
             android:contentDescription="Go back to Homescreen"
             android:src="@drawable/ic_baseline_arrow_back_24"
-            android:tint="@color/dark_text_primary"
-            app:tint="@color/dark_text_primary" />
+            android:tint="@color/light_text_primary"
+            app:tint="@color/light_text_primary" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -31,7 +31,7 @@
             android:layout_centerInParent="true"
             android:fontFamily="@font/montserrat_bold"
             android:text="Bình luận"
-            android:textColor="@color/dark_text_primary"
+            android:textColor="@color/light_text_primary"
             android:textSize="18sp"
             android:textStyle="bold" />
     </RelativeLayout>
@@ -39,12 +39,12 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/dark_divider" />
+        android:background="@color/light_divider" />
     <ListView
         android:id="@+id/listViewComment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/dark_background"
+        android:background="@color/light_background"
         android:divider="@null"
         android:paddingHorizontal="6dp"
         android:paddingTop="6dp"
@@ -57,7 +57,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="@color/dark_surface"
+        android:background="@color/light_surface"
         android:paddingHorizontal="12dp"
         android:paddingVertical="6dp"
         android:gravity="center_vertical"
@@ -67,7 +67,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/dark_text_secondary"
+            android:textColor="@color/light_text_secondary"
             android:textSize="12sp"
             android:text="@User..."/>
         <ImageView
@@ -75,8 +75,8 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_close"
-            android:tint="@color/dark_text_secondary"
-            app:tint="@color/dark_text_secondary"
+            android:tint="@color/light_text_secondary"
+            app:tint="@color/light_text_secondary"
             android:clickable="true"
             android:focusable="true"/>
     </LinearLayout>
@@ -87,7 +87,7 @@
         android:layout_gravity="bottom"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:background="@color/dark_background"
+        android:background="@color/light_background"
         android:paddingHorizontal="12dp"
         android:paddingVertical="8dp">
         <de.hdodenhof.circleimageview.CircleImageView
@@ -101,7 +101,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/edt_shape"
+            android:background="@drawable/edt_shape_light"
             android:paddingHorizontal="12dp"
             android:paddingVertical="6dp">
 
@@ -112,8 +112,8 @@
                 android:background="@null"
                 android:hint="Thêm bình luận..."
                 android:fontFamily="@font/montserrat_medium"
-                android:textColor="@color/dark_text_primary"
-                android:textColorHint="@color/dark_text_secondary"
+                android:textColor="@color/light_text_primary"
+                android:textColorHint="@color/light_text_secondary"
                 android:textSize="14dp"
                 android:minLines="1"
                 android:maxLines="4"

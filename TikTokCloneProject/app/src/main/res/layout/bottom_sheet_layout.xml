@@ -3,7 +3,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/dialog_bg"
+    android:background="@drawable/dialog_bg_light"
     >
     <LinearLayout
         android:id="@+id/llSetting"
@@ -16,7 +16,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_baseline_settings_24"
-            android:tint="@color/dark_text_primary"
+            android:tint="@color/light_text_primary"
             android:layout_marginEnd="20dp"
             android:layout_gravity="center"
             />
@@ -26,14 +26,14 @@
             android:text="Setting and Privacy"
             android:textSize="15sp"
             android:layout_gravity="center"
-            android:textColor="@color/dark_text_primary"
+            android:textColor="@color/light_text_primary"
             />
 
     </LinearLayout>
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/dark_divider"
+        android:background="@color/light_divider"
         android:layout_marginLeft="30dp"
         android:layout_marginRight="30dp"/>
 
@@ -48,7 +48,7 @@
             android:layout_width="20dp"
             android:layout_height="20dp"
             android:src="@drawable/ic_baseline_logout_24"
-            android:tint="@color/dark_text_primary"
+            android:tint="@color/light_text_primary"
             android:layout_marginEnd="20dp"
             android:layout_gravity="center"
             />
@@ -58,7 +58,7 @@
             android:text="Sign out"
             android:textSize="15sp"
             android:layout_gravity="center"
-            android:textColor="@color/dark_text_primary"
+            android:textColor="@color/light_text_primary"
             />
 
     </LinearLayout>

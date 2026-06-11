@@ -5,7 +5,7 @@
     android:id="@+id/llSignupChoice"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/tiktok_black"
+    android:background="@color/light_background"
     tools:context=".activity.SignupChoiceActivity">
 
     <!-- Back Button -->
@@ -15,8 +15,8 @@
         android:layout_height="wrap_content"
         android:src="@drawable/ic_baseline_arrow_back_24"
         android:padding="16dp"
-        android:tint="@color/white"
-        app:tint="@color/white"
+        android:tint="@color/light_text_primary"
+        app:tint="@color/light_text_primary"
         android:contentDescription="Back"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"/>
@@ -45,7 +45,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/montserrat_bold"
             android:text="@string/sign_up"
-            android:textColor="@color/white"
+            android:textColor="@color/light_text_primary"
             android:textSize="26sp"
             android:layout_marginBottom="8dp"/>
 
@@ -56,7 +56,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/montserrat_medium"
             android:text="Đăng nhập để theo dõi tác giả, thích video và xem bình luận."
-            android:textColor="#8A8A8E"
+            android:textColor="@color/light_text_secondary"
             android:textSize="13sp"
             android:gravity="center"
             android:layout_marginBottom="32dp"/>
@@ -73,8 +73,10 @@
             android:fontFamily="@font/montserrat_bold"
             android:text="@string/btnChoiceEmail"
             android:textAllCaps="false"
-            android:textColor="@color/black"
+            android:textColor="@color/light_text_primary"
             app:backgroundTint="@color/white"
+            app:strokeColor="@color/light_divider"
+            app:strokeWidth="1dp"
             app:cornerRadius="25dp"
             android:textSize="14sp"
             android:elevation="2dp"
@@ -88,9 +90,9 @@
             android:fontFamily="@font/montserrat_bold"
             android:text="Sử dụng Email &amp; Mật khẩu"
             android:textAllCaps="false"
-            android:textColor="@color/white"
+            android:textColor="@color/light_text_primary"
             app:backgroundTint="@color/transparent"
-            app:strokeColor="@color/white"
+            app:strokeColor="@color/light_text_primary"
             app:strokeWidth="1.5dp"
             app:cornerRadius="25dp"
             android:textSize="14sp"
@@ -105,7 +107,7 @@
         android:layout_alignParentBottom="true"
         android:gravity="center"
         android:orientation="vertical"
-        android:background="#1C1C1E"
+        android:background="@color/light_surface"
         android:padding="16dp">
         
         <TextView
@@ -114,7 +116,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/montserrat_semibold"
             android:text="@string/sign_up_alt"
-            android:textColor="@color/white"
+            android:textColor="@color/light_text_primary"
             android:textSize="14sp"
             android:clickable="true"/>
     </LinearLayout>
