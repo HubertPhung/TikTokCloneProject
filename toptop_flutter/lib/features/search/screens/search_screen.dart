@@ -194,6 +194,91 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
     );
   }
 
+  Widget _buildCampaignBanner(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 120,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFE2C55), Color(0xFF8B2C4E), Color(0xFF1D1D2F)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            _onTagSelect('dalat');
+          },
+          child: Stack(
+            children: [
+              Positioned(
+                right: -10,
+                bottom: -10,
+                child: Opacity(
+                  opacity: 0.25,
+                  child: const Text('🌲', style: TextStyle(fontSize: 100)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'CHIẾN DỊCH QUẢNG BÁ',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Đà Lạt Trong Tôi 🌲',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Khám phá xứ sở sương mù & lưu lại khoảnh khắc',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // Giao diện Khám phá (khi chưa nhập gì)
   Widget _buildDiscoveryUI({
     required List<String> searchHistory,
@@ -202,6 +287,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
   }) {
     return ListView(
       children: [
+        _buildCampaignBanner(context),
+        
         // 2.1 Lịch sử tìm kiếm
         if (searchHistory.isNotEmpty) ...[
           Padding(

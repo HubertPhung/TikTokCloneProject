@@ -5,6 +5,7 @@ import 'package:firebase_database/firebase_database.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../models/video_model.dart';
+import '../models/ad_model.dart';
 
 /// Repository xử lý logic liên quan đến Video (feed, like, view count, sở thích)
 /// Port từ VideoFragment.java, VideoAdapter.java, RecommendationHelper.java
@@ -18,8 +19,8 @@ class VideoRepository {
   })  : _firestore = firestore,
         _database = database;
 
-  /// Stream danh sách video được đề xuất (sắp xếp theo thời gian mới nhất)
-  /// Port từ VideoFragment.loadVideos()
+  /// Stream danh sách video được đề xuất (ưu tiên chiến dịch Đà Lạt lên trước)
+  /// Port từ VideoFragment.loadVideos() và RecommendationHelper
   Stream<List<VideoModel>> watchRecommendedVideos() {
     return _firestore
         .collection(AppConstants.videosCollection)
@@ -27,12 +28,28 @@ class VideoRepository {
         .limit(AppConstants.videoFeedLimit)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final list = snapshot.docs
           .map((doc) => VideoModel.fromMap(doc.data()))
           .where((video) =>
               video.moderationStatus != 'rejected' &&
               video.moderationStatus != 'pending')
           .toList();
+
+      // Sắp xếp ưu tiên các video thuộc chiến dịch Đà Lạt (theo hashtags hoặc location)
+      list.sort((a, b) {
+        final aIsCampaign = a.location == 'Da Lat' ||
+            a.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+                .contains(tag.toLowerCase().replaceAll('#', '')));
+        final bIsCampaign = b.location == 'Da Lat' ||
+            b.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+                .contains(tag.toLowerCase().replaceAll('#', '')));
+
+        if (aIsCampaign && !bIsCampaign) return -1;
+        if (!aIsCampaign && bIsCampaign) return 1;
+        return b.timestamp.compareTo(a.timestamp);
+      });
+
+      return list;
     });
   }
 
@@ -217,5 +234,53 @@ class VideoRepository {
 
     // Thực hiện batch write
     await batch.commit();
+  }
+
+  /// Theo dõi danh sách video quảng cáo từ Firestore
+  /// Có hỗ trợ dữ liệu giả định (Mock Data) nếu collection trống
+  Stream<List<AdModel>> watchAds() {
+    return _firestore.collection('ads').snapshots().map((snapshot) {
+      if (snapshot.docs.isEmpty) {
+        return [
+          AdModel(
+            adId: 'mock_ad_1',
+            videoUri: 'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4',
+            sponsorName: 'Đà Lạt Travel Co.',
+            description: 'Khám phá Đà Lạt mộng mơ với tour du lịch 3 ngày 2 đêm trọn gói chỉ từ 1.990.000 VNĐ. Đặt ngay hôm nay nhận ưu đãi 20%!',
+            ctaText: 'Đặt tour ngay',
+            targetUrl: 'https://dalattrip.com',
+          ),
+          AdModel(
+            adId: 'mock_ad_2',
+            videoUri: 'https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-2213-large.mp4',
+            sponsorName: 'Thác Datanla Adventure',
+            description: 'Trải nghiệm đu dây vượt thác, xe trượt núi dài nhất Đông Nam Á tại Datanla Đà Lạt. Mở cửa từ 7:00 đến 17:00 hằng ngày.',
+            ctaText: 'Xem chi tiết',
+            targetUrl: 'https://datanla.vn',
+          ),
+        ];
+      }
+      return snapshot.docs.map((doc) => AdModel.fromMap(doc.data(), doc.id)).toList();
+    });
+  }
+
+  /// Ghi nhận lượt xem cho chiến dịch quảng bá Đà Lạt
+  Future<void> recordCampaignView(String videoId) async {
+    final docRef = _firestore.collection('campaign_analytics').doc(videoId);
+    await docRef.set({
+      'videoId': videoId,
+      'campaign': 'dalat',
+      'views': FieldValue.increment(1),
+    }, SetOptions(merge: true));
+  }
+
+  /// Ghi nhận lượt click vào badge/hashtag chiến dịch Đà Lạt
+  Future<void> recordCampaignClick(String videoId) async {
+    final docRef = _firestore.collection('campaign_analytics').doc(videoId);
+    await docRef.set({
+      'videoId': videoId,
+      'campaign': 'dalat',
+      'clicks': FieldValue.increment(1),
+    }, SetOptions(merge: true));
   }
 }

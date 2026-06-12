@@ -37,6 +37,8 @@ class _EditFieldScreenState extends ConsumerState<EditFieldScreen> {
       if (profile != null) {
         if (widget.field == 'username') {
           _controller.text = profile.username;
+        } else if (widget.field == 'birthdate' && profile.birthdate.isNotEmpty) {
+          _controller.text = profile.birthdate;
         }
       }
     });

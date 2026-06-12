@@ -101,6 +101,10 @@ class UploadRepository {
     required String authorId,
     required String username,
     required List<String> hashtags,
+    String? location,
+    bool allowDownload = true,
+    bool allowDuet = true,
+    bool isCopyrightProtected = false,
   }) async {
     // 1. Tạo bản ghi video gốc trong bộ sưu tập "videos"
     final videoData = {
@@ -115,6 +119,10 @@ class UploadRepository {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
       'moderationStatus': 'pending', // Mặc định chờ kiểm duyệt
       'hashtags': hashtags,
+      'location': location,
+      'allowDownload': allowDownload,
+      'allowDuet': allowDuet,
+      'isCopyrightProtected': isCopyrightProtected,
     };
 
     await _firestore

@@ -21,6 +21,8 @@ Thumbs.db
 AGENTS.md
 CLAUDE.md
 .gitnexus/
+.agents/
+skills-lock.json
 
 # Subproject specific ignores (fallback)
 TikTokCloneProject/local.properties

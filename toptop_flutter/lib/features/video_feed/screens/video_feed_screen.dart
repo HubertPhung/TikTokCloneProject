@@ -6,21 +6,23 @@ import '../providers/video_provider.dart';
 import '../widgets/video_action_bar.dart';
 import '../widgets/video_overlay.dart';
 import '../widgets/video_player_widget.dart';
+import '../widgets/ad_player_widget.dart';
+import '../models/feed_item.dart';
 
 /// Màn hình chính phát video cuộn dọc (Video Feed)
-/// Port từ VideoFragment.java
+/// Port từ VideoFragment.java và hỗ trợ thêm quảng cáo và chiến dịch du lịch
 class VideoFeedScreen extends ConsumerWidget {
   const VideoFeedScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final feedState = ref.watch(videoFeedStreamProvider);
+    final feedState = ref.watch(homeFeedProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: feedState.when(
-        data: (videos) {
-          if (videos.isEmpty) {
+        data: (items) {
+          if (items.isEmpty) {
             return const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -42,23 +44,43 @@ class VideoFeedScreen extends ConsumerWidget {
 
           return PageView.builder(
             scrollDirection: Axis.vertical,
-            itemCount: videos.length,
+            itemCount: items.length,
             itemBuilder: (context, index) {
-              final video = videos[index];
+              final item = items[index];
 
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  // 1. Trình phát Video nền
-                  VideoPlayerWidget(video: video),
+              if (item is AdItem) {
+                return AdPlayerWidget(ad: item.ad);
+              } else if (item is VideoItem) {
+                final video = item.video;
 
-                  // 2. Overlay thông tin ở góc trái dưới
-                  VideoOverlay(video: video),
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // 1. Trình phát Video nền
+                    VideoPlayerWidget(video: video),
 
-                  // 3. Action bar dọc ở góc phải dưới
-                  VideoActionBar(video: video),
-                ],
-              );
+                    // 2. Overlay thông tin ở góc trái dưới
+                    VideoOverlay(
+                      video: video,
+                      onCampaignBadgeTap: () {
+                        // Ghi nhận click chiến dịch
+                        ref.read(videoRepositoryProvider).recordCampaignClick(video.videoId);
+                        
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Cảm ơn bạn đã tham gia chiến dịch quảng bá du lịch Đà Lạt! 🌲'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // 3. Action bar dọc ở góc phải dưới
+                    VideoActionBar(video: video),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
             },
           );
         },
@@ -89,3 +111,4 @@ class VideoFeedScreen extends ConsumerWidget {
     );
   }
 }
+

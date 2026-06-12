@@ -174,7 +174,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 // Thay đổi Ngày sinh (Birthdate)
                 _buildEditRow(
                   label: 'Ngày sinh',
-                  value: 'Chưa cập nhật', // Giá trị này sẽ được lấy từ Users collection ở Sprint sau
+                  value: profile.birthdate.isNotEmpty ? profile.birthdate : 'Chưa cập nhật',
                   onTap: () {
                     context.push('/profile/edit/birthdate');
                   },

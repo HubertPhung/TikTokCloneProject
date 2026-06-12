@@ -5,11 +5,19 @@ import '../models/video_model.dart';
 /// Port từ VideoAdapter.VideoViewHolder.updateMetadataUI()
 class VideoOverlay extends StatelessWidget {
   final VideoModel video;
+  final VoidCallback? onCampaignBadgeTap;
 
   const VideoOverlay({
     super.key,
     required this.video,
+    this.onCampaignBadgeTap,
   });
+
+  bool get _isDalatCampaign {
+    return video.location == 'Da Lat' ||
+        video.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+            .contains(tag.toLowerCase().replaceAll('#', '')));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +29,36 @@ class VideoOverlay extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Thẻ Chiến dịch Đà Lạt
+          if (_isDalatCampaign) ...[
+            GestureDetector(
+              onTap: onCampaignBadgeTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFE2C55).withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🌲', style: TextStyle(fontSize: 12)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Du Lịch Đà Lạt',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+
           // Tên tác giả
           Text(
             video.username.isNotEmpty ? '@${video.username}' : '@User',

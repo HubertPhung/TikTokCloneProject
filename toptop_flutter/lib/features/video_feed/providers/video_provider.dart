@@ -3,6 +3,8 @@ import '../../../core/providers/firebase_providers.dart';
 import '../../auth/models/profile_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/video_model.dart';
+import '../models/ad_model.dart';
+import '../models/feed_item.dart';
 import '../repositories/video_repository.dart';
 
 /// Provider cho VideoRepository
@@ -42,3 +44,43 @@ final videoCommentsCountProvider =
       .snapshots()
       .map((snapshot) => snapshot.docs.length);
 });
+
+/// StreamProvider theo dõi danh sách quảng cáo
+final adsStreamProvider = StreamProvider<List<AdModel>>((ref) {
+  return ref.watch(videoRepositoryProvider).watchAds();
+});
+
+/// Provider kết hợp video thường và quảng cáo tự động
+final homeFeedProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
+  final videosAsync = ref.watch(videoFeedStreamProvider);
+  final adsAsync = ref.watch(adsStreamProvider);
+
+  return videosAsync.when(
+    data: (videos) {
+      return adsAsync.when(
+        data: (ads) {
+          final feedItems = <FeedItem>[];
+          int videoCounter = 0;
+          int adIndex = 0;
+
+          for (final video in videos) {
+            feedItems.add(VideoItem(video));
+            videoCounter++;
+
+            if (videoCounter % 5 == 0 && ads.isNotEmpty) {
+              final selectedAd = ads[adIndex % ads.length];
+              feedItems.add(AdItem(selectedAd));
+              adIndex++;
+            }
+          }
+          return AsyncValue.data(feedItems);
+        },
+        loading: () => const AsyncValue.loading(),
+        error: (err, stack) => AsyncValue.error(err, stack),
+      );
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (err, stack) => AsyncValue.error(err, stack),
+  );
+});
+

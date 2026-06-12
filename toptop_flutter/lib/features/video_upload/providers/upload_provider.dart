@@ -69,6 +69,10 @@ class UploadNotifier extends StateNotifier<UploadState> {
     required String authorId,
     required String username,
     required List<String> hashtags,
+    String? location,
+    bool allowDownload = true,
+    bool allowDuet = true,
+    bool isCopyrightProtected = false,
   }) async {
     state = UploadState(status: UploadStatus.uploading, progress: 0.0);
 
@@ -93,6 +97,10 @@ class UploadNotifier extends StateNotifier<UploadState> {
         authorId: authorId,
         username: username,
         hashtags: hashtags,
+        location: location,
+        allowDownload: allowDownload,
+        allowDuet: allowDuet,
+        isCopyrightProtected: isCopyrightProtected,
       );
 
       // 3. Kết thúc thành công

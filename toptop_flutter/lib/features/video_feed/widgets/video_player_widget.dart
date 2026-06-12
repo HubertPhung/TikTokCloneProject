@@ -96,6 +96,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
         currentUid: user.uid,
       );
     }
+
+    // 3. Tăng lượt xem cho chiến dịch quảng bá Đà Lạt nếu hợp lệ
+    final isDalatCampaign = widget.video.location == 'Da Lat' ||
+        widget.video.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadat']
+            .contains(tag.toLowerCase().replaceAll('#', '')));
+    if (isDalatCampaign) {
+      repo.recordCampaignView(widget.video.videoId);
+    }
   }
 
   void _handleTap() {

@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../models/profile_model.dart';
@@ -90,6 +91,86 @@ class AuthRepository {
     final user = credential.user;
     if (user == null) {
       throw Exception('Đăng nhập thất bại.');
+    }
+
+    return user;
+  }
+
+  /// Đăng nhập bằng Google Account
+  /// Port từ EmailSignInActivity.java
+  Future<User?> signInWithGoogle() async {
+    // 1. Kích hoạt luồng đăng nhập Google
+    final googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) {
+      return null; // Người dùng hủy bỏ chọn tài khoản
+    }
+
+    // 2. Lấy thông tin xác thực từ Google
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    // 3. Đăng nhập vào Firebase Auth bằng Google Credential
+    final userCredential = await _auth.signInWithCredential(credential);
+    final user = userCredential.user;
+    if (user == null) {
+      throw Exception('Đăng nhập bằng tài khoản Google thất bại.');
+    }
+
+    // 4. Kiểm tra xem user document đã tồn tại trên Firestore chưa
+    final userDocRef = _firestore.collection(AppConstants.usersCollection).doc(user.uid);
+    final userDoc = await userDocRef.get();
+
+    String username = googleUser.displayName ?? '';
+    if (username.isEmpty) {
+      username = 'user_${user.uid.substring(0, 5)}';
+    }
+    // Loại bỏ ký tự đặc biệt để làm username hợp lệ
+    username = username.replaceAll(RegExp(r'[^a-zA-Z0-9_.]'), '');
+
+    if (!userDoc.exists) {
+      // Tạo bản ghi mới nếu chưa có
+      final userData = {
+        'userId': user.uid,
+        'username': username,
+        'birthdate': '',
+        'avatarUrl': googleUser.photoUrl ?? '',
+        'email': googleUser.email,
+        'isPrivate': false,
+        'phone': '',
+        'status': 'active',
+        'role': 'user',
+      };
+      await userDocRef.set(userData);
+    } else {
+      // Nếu tài khoản đã tồn tại, kiểm tra xem có bị khóa (banned) hay không
+      final status = userDoc.data()?['status'] as String?;
+      if (status == 'banned') {
+        await signOut();
+        throw Exception('Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng.');
+      }
+    }
+
+    // 5. Kiểm tra hồ sơ (profile) đã tồn tại chưa
+    final profileDocRef = _firestore.collection(AppConstants.profilesCollection).doc(user.uid);
+    final profileDoc = await profileDocRef.get();
+
+    if (!profileDoc.exists) {
+      final profileData = {
+        'userId': user.uid,
+        'email': googleUser.email,
+        'username': username,
+        'fullname': googleUser.displayName ?? username,
+        'avatar': googleUser.photoUrl ?? '',
+        'bio': 'Toptop user',
+        'followers': 0,
+        'following': 0,
+        'likes': 0,
+        'isPrivate': false,
+      };
+      await profileDocRef.set(profileData);
     }
 
     return user;

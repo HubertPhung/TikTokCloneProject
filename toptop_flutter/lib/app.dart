@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/firebase_providers.dart';
+import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/chat/providers/chat_provider.dart';
@@ -47,6 +48,7 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeNotifierProvider);
 
     // Lắng nghe sự thay đổi Auth State để kích hoạt tự động Presence
     ref.listen<AsyncValue<dynamic>>(authStateProvider, (previous, next) {
@@ -62,8 +64,11 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
     return MaterialApp.router(
       title: 'TopTop',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }
 }
+

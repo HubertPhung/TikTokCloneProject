@@ -113,6 +113,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Đăng nhập bằng Google
+  Future<bool> signInWithGoogle() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final user = await _repository.signInWithGoogle();
+      state = state.copyWith(isLoading: false);
+      return user != null;
+    } on FirebaseAuthException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _mapFirebaseError(e.code),
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
   /// Đăng xuất
   Future<void> signOut() async {
     await _repository.signOut();

@@ -148,9 +148,20 @@ class ProfileRepository {
         final modStatus = data['moderationStatus'] as String?;
         if (modStatus == 'rejected') continue;
 
-        String thumb = data['videoUri'] as String? ?? '';
+        String thumb = data['thumbnailUri'] as String? ?? '';
         if (thumb.isEmpty) {
-          thumb = data['thumbnailUri'] as String? ?? '';
+          thumb = data['thumbnailUrl'] as String? ?? '';
+        }
+        if (thumb.isEmpty) {
+          final videoUri = data['videoUri'] as String? ?? '';
+          if (videoUri.contains('cloudinary.com')) {
+            thumb = videoUri.replaceAll('.mp4', '.jpg');
+            if (thumb.contains('/upload/')) {
+              thumb = thumb.replaceAll('/upload/', '/upload/so_0/');
+            }
+          } else {
+            thumb = 'https://picsum.photos/200/300'; // Dự phòng
+          }
         }
 
         list.add(VideoSummaryModel(

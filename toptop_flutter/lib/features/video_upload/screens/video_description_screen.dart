@@ -36,6 +36,11 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
   bool _isEditMode = false;
   bool _isAiLoading = false;
   String _previewUrl = '';
+  
+  // Trạng thái bảo mật và chiến dịch Đà Lạt
+  bool _allowDownload = true;
+  bool _isCopyrightProtected = false;
+  bool _isDalatCampaign = false;
 
   @override
   void initState() {
@@ -301,6 +306,10 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
       authorId: user.uid,
       username: myUsername,
       hashtags: hashtagsList,
+      location: _isDalatCampaign ? 'Da Lat' : null,
+      allowDownload: _allowDownload,
+      allowDuet: true,
+      isCopyrightProtected: _isCopyrightProtected,
     );
 
     if (mounted) {
@@ -491,6 +500,84 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                               ),
                             ),
                           ],
+                        ),
+
+                        const SizedBox(height: 24),
+                        // === Cài đặt quyền riêng tư & chiến dịch ===
+                        const Text(
+                          'Cài đặt quyền riêng tư',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Cho phép tải xuống
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppTheme.primaryColor,
+                          title: const Text(
+                            'Cho phép tải xuống',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Người xem có thể lưu video này',
+                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          secondary: const Icon(Icons.download_rounded, color: Colors.white70),
+                          value: _allowDownload,
+                          onChanged: (val) => setState(() => _allowDownload = val),
+                        ),
+
+                        const Divider(color: Colors.white12, height: 1),
+
+                        // Bảo vệ bản quyền
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppTheme.primaryColor,
+                          title: const Text(
+                            'Bảo vệ bản quyền',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Đánh dấu video là nội dung gốc, được bảo vệ',
+                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          secondary: const Icon(Icons.copyright_rounded, color: Colors.white70),
+                          value: _isCopyrightProtected,
+                          onChanged: (val) => setState(() => _isCopyrightProtected = val),
+                        ),
+
+                        const Divider(color: Colors.white12, height: 1),
+
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Chiến dịch quảng bá',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Chiến dịch Đà Lạt
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: const Color(0xFF4CAF50),
+                          title: const Text(
+                            '🌲 Đà Lạt Trong Tôi',
+                            style: TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                          subtitle: const Text(
+                            'Tham gia chiến dịch quảng bá du lịch Đà Lạt để video được ưu tiên hiển thị',
+                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                          ),
+                          secondary: const Icon(Icons.eco_rounded, color: Color(0xFF4CAF50)),
+                          value: _isDalatCampaign,
+                          onChanged: (val) => setState(() => _isDalatCampaign = val),
                         ),
                       ],
                     ),

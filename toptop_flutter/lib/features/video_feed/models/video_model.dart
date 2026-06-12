@@ -12,6 +12,10 @@ class VideoModel {
   final int watchCount;
   final int timestamp;
   final List<String> hashtags;
+  final String? location;
+  final bool allowDownload;
+  final bool allowDuet;
+  final bool isCopyrightProtected;
 
   VideoModel({
     required this.videoId,
@@ -25,6 +29,10 @@ class VideoModel {
     this.watchCount = 0,
     required this.timestamp,
     this.hashtags = const [],
+    this.location,
+    this.allowDownload = true,
+    this.allowDuet = true,
+    this.isCopyrightProtected = false,
   });
 
   factory VideoModel.fromMap(Map<String, dynamic> map) {
@@ -43,6 +51,10 @@ class VideoModel {
               ?.map((e) => e.toString())
               .toList() ??
           const [],
+      location: map['location'] as String?,
+      allowDownload: map['allowDownload'] as bool? ?? true,
+      allowDuet: map['allowDuet'] as bool? ?? true,
+      isCopyrightProtected: map['isCopyrightProtected'] as bool? ?? false,
     );
   }
 
@@ -58,6 +70,10 @@ class VideoModel {
         'watchCount': watchCount,
         'timestamp': timestamp,
         'hashtags': hashtags,
+        'location': location,
+        'allowDownload': allowDownload,
+        'allowDuet': allowDuet,
+        'isCopyrightProtected': isCopyrightProtected,
       };
 
   VideoModel copyWith({
@@ -72,6 +88,10 @@ class VideoModel {
     int? watchCount,
     int? timestamp,
     List<String>? hashtags,
+    String? location,
+    bool? allowDownload,
+    bool? allowDuet,
+    bool? isCopyrightProtected,
   }) {
     return VideoModel(
       videoId: videoId ?? this.videoId,
@@ -85,6 +105,10 @@ class VideoModel {
       watchCount: watchCount ?? this.watchCount,
       timestamp: timestamp ?? this.timestamp,
       hashtags: hashtags ?? this.hashtags,
+      location: location ?? this.location,
+      allowDownload: allowDownload ?? this.allowDownload,
+      allowDuet: allowDuet ?? this.allowDuet,
+      isCopyrightProtected: isCopyrightProtected ?? this.isCopyrightProtected,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -217,21 +218,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: isMe
-                        ? OutlinedButton(
-                            onPressed: () => context.push('/profile/edit'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: const BorderSide(color: Colors.white30),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              minimumSize: const Size(double.infinity, 45),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
+                        ? Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => context.push('/profile/edit'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white30),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    minimumSize: const Size(0, 45),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    'Sửa hồ sơ',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: const Text(
-                              'Sửa hồ sơ',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                height: 45,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    final link = 'https://toptop.app/user/$profileId';
+                                    Clipboard.setData(ClipboardData(text: link));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Đã sao chép liên kết hồ sơ!'),
+                                        duration: Duration(seconds: 2),
+                                      ),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.white30),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  ),
+                                  child: const Icon(Icons.share_outlined, size: 20),
+                                ),
+                              ),
+                            ],
                           )
                         : Row(
                             children: [

@@ -10,6 +10,7 @@ class ProfileModel {
   final int following;
   final int likes;
   final bool isPrivate;
+  final String birthdate;
 
   ProfileModel({
     required this.userId,
@@ -21,6 +22,7 @@ class ProfileModel {
     this.following = 0,
     this.likes = 0,
     this.isPrivate = false,
+    this.birthdate = '',
   });
 
   factory ProfileModel.fromMap(Map<String, dynamic> map) {
@@ -34,6 +36,7 @@ class ProfileModel {
       following: (map['following'] as num?)?.toInt() ?? 0,
       likes: (map['likes'] as num?)?.toInt() ?? 0,
       isPrivate: map['isPrivate'] as bool? ?? false,
+      birthdate: map['birthdate'] as String? ?? '',
     );
   }
 
@@ -47,6 +50,7 @@ class ProfileModel {
         'following': following,
         'likes': likes,
         'isPrivate': isPrivate,
+        'birthdate': birthdate,
       };
 
   ProfileModel copyWith({
@@ -59,6 +63,7 @@ class ProfileModel {
     int? following,
     int? likes,
     bool? isPrivate,
+    String? birthdate,
   }) {
     return ProfileModel(
       userId: userId ?? this.userId,
@@ -70,6 +75,7 @@ class ProfileModel {
       following: following ?? this.following,
       likes: likes ?? this.likes,
       isPrivate: isPrivate ?? this.isPrivate,
+      birthdate: birthdate ?? this.birthdate,
     );
   }
 }
