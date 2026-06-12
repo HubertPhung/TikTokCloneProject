@@ -64,29 +64,38 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final currentUser = ref.watch(currentUserProvider);
     final profileState = ref.watch(currentUserProfileProvider);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : Colors.black),
           onPressed: () => context.pop(),
         ),
-        title: const Text(
+        title: Text(
           'Sửa hồ sơ',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
       ),
       body: profileState.when(
         data: (profile) {
           if (profile == null || currentUser == null) {
-            return const Center(
-              child: Text('Không tìm thấy thông tin đăng nhập', style: TextStyle(color: Colors.white70)),
+            return Center(
+              child: Text(
+                'Không tìm thấy thông tin đăng nhập',
+                style: TextStyle(color: isDark ? Colors.white70 : Colors.black87),
+              ),
             );
           }
 
@@ -102,12 +111,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     children: [
                       CircleAvatar(
                         radius: 54,
-                        backgroundColor: Colors.grey[900],
+                        backgroundColor: isDark ? Colors.grey[900] : Colors.grey[300],
                         backgroundImage: profile.avatarUrl.isNotEmpty
                             ? CachedNetworkImageProvider(profile.avatarUrl)
                             : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                         child: profile.avatarUrl.isEmpty
-                            ? const Icon(Icons.person, size: 54, color: Colors.white54)
+                            ? Icon(Icons.person, size: 54, color: isDark ? Colors.white54 : Colors.grey[600])
                             : null,
                       ),
                       // Lớp đen mờ & icon camera
@@ -118,12 +127,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           height: 108,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.black38,
+                            color: Colors.black.withValues(alpha: 0.25),
+                            border: Border.all(color: Colors.white24, width: 1),
                           ),
                           child: const Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.white70,
-                            size: 28,
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 34,
                           ),
                         ),
                       ),
@@ -141,40 +151,45 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: _isSavingAvatar ? null : () => _pickAndUploadAvatar(currentUser.uid),
-                  child: const Text(
+                  child: Text(
                     'Thay đổi ảnh',
-                    style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // 2. Danh sách các trường thông tin
-                const Divider(color: Colors.white12, height: 1),
+                Divider(color: theme.dividerColor, height: 1),
 
                 // Thay đổi Username
                 _buildEditRow(
                   label: 'Username',
                   value: '@${profile.username}',
+                  icon: Icons.alternate_email,
                   onTap: () {
                     context.push('/profile/edit/username');
                   },
                 ),
 
-                // Thay đổi Bio (Ở đây đã có inline editor trên ProfileScreen,
-                // nhưng vẫn có thể dẫn link hoặc xem giá trị tại đây)
+                // Thay đổi Bio
                 _buildEditRow(
                   label: 'Tiểu sử',
                   value: profile.bio.isNotEmpty ? profile.bio : 'Chưa thiết lập',
+                  icon: Icons.info_outline,
                   onTap: () {
-                    // Trở về trang profile để nhấn vào tiểu sử sửa
                     context.pop();
                   },
                 ),
 
-                // Thay đổi Ngày sinh (Birthdate)
+                // Thay đổi Ngày sinh
                 _buildEditRow(
                   label: 'Ngày sinh',
                   value: profile.birthdate.isNotEmpty ? profile.birthdate : 'Chưa cập nhật',
+                  icon: Icons.calendar_today_outlined,
                   onTap: () {
                     context.push('/profile/edit/birthdate');
                   },
@@ -184,11 +199,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 _buildEditRow(
                   label: 'Mật khẩu',
                   value: '••••••••',
+                  icon: Icons.lock_outline,
                   onTap: () {
                     context.push('/settings/password');
                   },
                 ),
-                const Divider(color: Colors.white12, height: 1),
+                Divider(color: theme.dividerColor, height: 1),
               ],
             ),
           );
@@ -208,19 +224,33 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget _buildEditRow({
     required String label,
     required String value,
+    required IconData icon,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return InkWell(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         child: Row(
           children: [
+            Icon(
+              icon,
+              color: isDark ? Colors.white70 : Colors.black54,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               flex: 3,
               child: Text(
                 label,
-                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             Expanded(
@@ -231,14 +261,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Expanded(
                     child: Text(
                       value,
-                      style: const TextStyle(color: Colors.white54, fontSize: 14),
+                      style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black54,
+                        fontSize: 14,
+                      ),
                       textAlign: TextAlign.end,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 14),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: isDark ? Colors.white30 : Colors.black26,
+                    size: 14,
+                  ),
                 ],
               ),
             ),

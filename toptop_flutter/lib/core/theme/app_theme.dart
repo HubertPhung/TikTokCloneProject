@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// Material 3 Dark Theme cho ứng dụng TopTop
-/// Thiết kế tối giống TikTok với điểm nhấn màu hồng đỏ
+/// Material 3 Theme cho ứng dụng TopTop
+/// Thiết kế premium giống TikTok với điểm nhấn màu hồng đỏ
 class AppTheme {
   AppTheme._();
 
   // Brand Colors
-  static const Color primaryColor = Color(0xFFFF2D55); // Hồng đỏ TikTok
+  static const Color primaryColor = Color(0xFFFE2C55); // Hồng đỏ TikTok
   static const Color secondaryColor = Color(0xFF25F4EE); // Cyan TikTok
   static const Color backgroundColor = Color(0xFF121212);
   static const Color surfaceColor = Color(0xFF1E1E1E);
@@ -19,6 +19,31 @@ class AppTheme {
   static const Color textSecondary = Color(0xFFAAAAAA);
   static const Color textHint = Color(0xFF666666);
   static const Color dividerColor = Color(0xFF333333);
+
+  // Shimmer Colors (loading skeleton)
+  static const Color shimmerBase = Color(0xFF2A2A2A);
+  static const Color shimmerHighlight = Color(0xFF3A3A3A);
+  static const Color shimmerBaseLight = Color(0xFFE0E0E0);
+  static const Color shimmerHighlightLight = Color(0xFFF5F5F5);
+
+  // Brand Gradient (CTA, headers)
+  static const LinearGradient brandGradient = LinearGradient(
+    colors: [Color(0xFFFE2C55), Color(0xFFFF6A88)],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
+
+  static const LinearGradient cyanGradient = LinearGradient(
+    colors: [Color(0xFF25F4EE), Color(0xFF00C9DB)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient logoGradient = LinearGradient(
+    colors: [Color(0xFF25F4EE), Color(0xFFFE2C55)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.dark(
@@ -139,20 +164,46 @@ class AppTheme {
 
       // SnackBar
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: cardColor,
-        contentTextStyle: const TextStyle(color: textPrimary),
+        backgroundColor: const Color(0xFF2D2D30),
+        contentTextStyle: const TextStyle(color: textPrimary, fontSize: 14),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
         ),
         behavior: SnackBarBehavior.floating,
+        elevation: 8,
       ),
 
       // Dialog
       dialogTheme: DialogThemeData(
         backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
         ),
+        titleTextStyle: const TextStyle(
+          color: textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+
+      // TabBar
+      tabBarTheme: const TabBarThemeData(
+        labelColor: textPrimary,
+        unselectedLabelColor: textHint,
+        indicatorColor: primaryColor,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontSize: 14),
+      ),
+
+      // BottomSheet
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Color(0xFF1D1D1F),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        showDragHandle: true,
+        dragHandleColor: Color(0xFF555555),
       ),
 
       // ProgressIndicator

@@ -303,6 +303,27 @@ class VideoActionBar extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
+                    // Nút Tải xuống (kiểm tra allowDownload)
+                    _buildShareOption(
+                      icon: Icons.download_rounded,
+                      label: 'Tải xuống',
+                      color: video.allowDownload ? Colors.green : Colors.grey,
+                      onTap: () {
+                        if (!video.allowDownload) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Video này không cho phép tải xuống theo cài đặt của tác giả.'),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Đang tải xuống video...')),
+                          );
+                          Navigator.pop(context);
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 20),
                     _buildShareOption(
                       icon: Icons.copy,
                       label: 'Sao chép link',

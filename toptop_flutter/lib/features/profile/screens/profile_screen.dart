@@ -151,9 +151,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // 1. Ảnh đại diện (Click để xem ảnh to)
+                  // 1. Ảnh đại diện với gradient ring
                   GestureDetector(
                     onTap: () {
                       showDialog(
@@ -161,56 +161,86 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         builder: (context) => AvatarPreviewDialog(avatarUrl: profile.avatarUrl),
                       );
                     },
-                    child: CircleAvatar(
-                      radius: 48,
-                      backgroundColor: Colors.grey[900],
-                      backgroundImage: profile.avatarUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(profile.avatarUrl)
-                          : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                      child: profile.avatarUrl.isEmpty
-                          ? const Icon(Icons.person, size: 48, color: Colors.white54)
-                          : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppTheme.logoGradient,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                            blurRadius: 16,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 48,
+                        backgroundColor: AppTheme.backgroundColor,
+                        child: CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.grey[900],
+                          backgroundImage: profile.avatarUrl.isNotEmpty
+                              ? CachedNetworkImageProvider(profile.avatarUrl)
+                              : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                          child: profile.avatarUrl.isEmpty
+                              ? const Icon(Icons.person, size: 48, color: Colors.white54)
+                              : null,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   // 2. Username hiển thị
                   Text(
                     '@${profile.username}',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. Hàng chỉ số (Đang theo dõi, Người theo dõi, Lượt thích)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildMetricItem(
-                        label: 'Đang theo dõi',
-                        value: profile.following.toString(),
-                        onTap: () => context.push(
-                          '/user/$profileId/following',
+                  // 3. Glassmorphism stats card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildMetricItem(
+                          label: 'Đang theo dõi',
+                          value: profile.following.toString(),
+                          onTap: () => context.push(
+                            '/user/$profileId/following',
+                          ),
                         ),
-                      ),
-                      _buildDivider(),
-                      _buildMetricItem(
-                        label: 'Người theo dõi',
-                        value: profile.followers.toString(),
-                        onTap: () => context.push(
-                          '/user/$profileId/followers',
+                        _buildDivider(),
+                        _buildMetricItem(
+                          label: 'Người theo dõi',
+                          value: profile.followers.toString(),
+                          onTap: () => context.push(
+                            '/user/$profileId/followers',
+                          ),
                         ),
-                      ),
-                      _buildDivider(),
-                      _buildMetricItem(
-                        label: 'Thích',
-                        value: profile.likes.toString(),
-                        onTap: null,
-                      ),
-                    ],
+                        _buildDivider(),
+                        _buildMetricItem(
+                          label: 'Thích',
+                          value: profile.likes.toString(),
+                          onTap: null,
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -225,16 +255,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   onPressed: () => context.push('/profile/edit'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.white,
-                                    side: const BorderSide(color: Colors.white30),
+                                    side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     minimumSize: const Size(0, 45),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
+                                    backgroundColor: Colors.white.withValues(alpha: 0.05),
                                   ),
                                   child: const Text(
                                     'Sửa hồ sơ',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                    style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               ),

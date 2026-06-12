@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,8 +96,13 @@ class InboxScreen extends ConsumerWidget {
                   );
                 }
 
-                return ListView.builder(
+                return ListView.separated(
                   itemCount: conversations.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    indent: 76,
+                    color: Colors.white.withValues(alpha: 0.06),
+                  ),
                   itemBuilder: (context, index) {
                     final conv = conversations[index];
                     final otherUserId = conv['userId'] as String;
@@ -193,7 +199,7 @@ class _ConversationTile extends ConsumerWidget {
           CircleAvatar(
             radius: 26,
             backgroundColor: isSystem ? const Color(0xFFFE2C55).withValues(alpha: 0.1) : Colors.grey[800],
-            backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+            backgroundImage: avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl) : null,
             child: avatarUrl.isEmpty
                 ? Icon(
                     isSystem ? Icons.verified_user_rounded : Icons.person,
@@ -204,18 +210,25 @@ class _ConversationTile extends ConsumerWidget {
           ),
           if (isOnline)
             Positioned(
-              right: 1,
-              bottom: 1,
+              right: 0,
+              bottom: 0,
               child: Container(
-                width: 13,
-                height: 13,
+                width: 14,
+                height: 14,
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: AppTheme.successColor,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: AppTheme.backgroundColor,
-                    width: 2,
+                    width: 2.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.successColor.withValues(alpha: 0.5),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
               ),
             ),

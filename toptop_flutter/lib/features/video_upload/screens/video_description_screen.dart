@@ -508,11 +508,25 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                           'Cài đặt quyền riêng tư',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             fontSize: 15,
+                            letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+
+                        // Card container cho privacy switches
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.08),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          child: Column(
+                            children: [
 
                         // Cho phép tải xuống
                         SwitchListTile(
@@ -550,18 +564,34 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                           onChanged: (val) => setState(() => _isCopyrightProtected = val),
                         ),
 
-                        const Divider(color: Colors.white12, height: 1),
+                            ],
+                          ),
+                        ),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 20),
                         const Text(
                           'Chiến dịch quảng bá',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             fontSize: 15,
+                            letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+
+                        // Card container cho campaign
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF4CAF50).withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          child: Column(
+                            children: [
 
                         // Chiến dịch Đà Lạt
                         SwitchListTile(
@@ -579,6 +609,9 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                           value: _isDalatCampaign,
                           onChanged: (val) => setState(() => _isDalatCampaign = val),
                         ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -587,15 +620,27 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: SizedBox(
+                      child: Container(
                         width: double.infinity,
-                        height: 48,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.brandGradient,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: ElevatedButton(
                           onPressed: _isEditMode ? _handleUpdate : _handlePublish,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                           child: Text(
@@ -603,7 +648,8 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
                             ),
                           ),
                         ),

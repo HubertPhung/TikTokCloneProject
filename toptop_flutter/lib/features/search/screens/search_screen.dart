@@ -317,7 +317,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
             ),
           ),
           SizedBox(
-            height: 34,
+            height: 36,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: searchHistory.length,
@@ -329,10 +329,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
                   child: ActionChip(
                     label: Text(hist),
                     labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                    backgroundColor: Colors.white.withValues(alpha: 0.06),
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                      borderRadius: BorderRadius.circular(20),
+                      side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
                     ),
                     onPressed: () => _onTagSelect(hist),
                   ),
@@ -344,15 +344,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
         ],
 
         // 2.2 Hashtags thịnh hành
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Hashtag thịnh hành',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: [
+              Icon(Icons.trending_up, color: AppTheme.primaryColor, size: 18),
+              const SizedBox(width: 6),
+              const Text(
+                'Hashtag thịnh hành',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
         trendingTags.when(
@@ -375,15 +381,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
         const SizedBox(height: 16),
 
         // 2.3 Video thịnh hành đề xuất
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            'Khám phá video',
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: [
+              Icon(Icons.explore_outlined, color: AppTheme.secondaryColor, size: 18),
+              const SizedBox(width: 6),
+              const Text(
+                'Khám phá video',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
         trendingVideos.when(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,8 +9,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
-/// Màn hình splash - hiển thị logo rồi chuyển hướng
-/// Port từ SplashScreenActivity.java
+/// Màn hình splash premium — hiển thị logo với hiệu ứng phát sáng và chuyển hướng
+/// Port từ SplashScreenActivity.java với nâng cấp animation
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,29 +19,48 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animController;
+    with TickerProviderStateMixin {
+  late AnimationController _mainController;
+  late AnimationController _pulseController;
+  late AnimationController _shimmerController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
 
-    _animController = AnimationController(
+    // Main fade + scale animation
+    _mainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeIn),
+      CurvedAnimation(parent: _mainController, curve: Curves.easeIn),
     );
-
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOutBack),
+      CurvedAnimation(parent: _mainController, curve: Curves.easeOutBack),
     );
 
-    _animController.forward();
+    // Pulse glow animation (lặp)
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    _pulseController.repeat(reverse: true);
+
+    // Shimmer animation cho text
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+    _shimmerController.repeat();
+
+    _mainController.forward();
 
     // Chuyển hướng sau splash delay
     Timer(
@@ -61,7 +81,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         }
       },
       loading: () {
-        // Chờ thêm nếu auth chưa sẵn sàng
         Future.delayed(const Duration(milliseconds: 500), _navigate);
       },
       error: (_, _) => context.go('/auth'),
@@ -70,7 +89,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   void dispose() {
-    _animController.dispose();
+    _mainController.dispose();
+    _pulseController.dispose();
+    _shimmerController.dispose();
     super.dispose();
   }
 
@@ -86,43 +107,97 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo icon
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppTheme.secondaryColor,
-                        AppTheme.primaryColor,
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                        blurRadius: 30,
-                        spreadRadius: 5,
+                // Logo icon với pulse glow
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: AppTheme.logoGradient,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor
+                                .withValues(alpha: _pulseAnimation.value),
+                            blurRadius: 40,
+                            spreadRadius: 8,
+                          ),
+                          BoxShadow(
+                            color: AppTheme.secondaryColor
+                                .withValues(alpha: _pulseAnimation.value * 0.5),
+                            blurRadius: 60,
+                            spreadRadius: 4,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.music_note_rounded,
-                    color: Colors.white,
-                    size: 56,
+                      child: const Icon(
+                        Icons.music_note_rounded,
+                        color: Colors.white,
+                        size: 56,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 28),
+
+                // App name với shimmer effect
+                AnimatedBuilder(
+                  animation: _shimmerController,
+                  builder: (context, child) {
+                    return ShaderMask(
+                      shaderCallback: (bounds) {
+                        return LinearGradient(
+                          colors: const [
+                            Colors.white54,
+                            Colors.white,
+                            Colors.white54,
+                          ],
+                          stops: [
+                            math.max(0.0, _shimmerController.value - 0.3),
+                            _shimmerController.value,
+                            math.min(1.0, _shimmerController.value + 0.3),
+                          ],
+                        ).createShader(bounds);
+                      },
+                      child: const Text(
+                        AppConstants.appName,
+                        style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // Subtitle
+                FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Text(
+                    'Khám phá thế giới ngay bây giờ',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.5),
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                // App name
-                const Text(
-                  AppConstants.appName,
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 2,
+                const SizedBox(height: 48),
+
+                // Loading indicator
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppTheme.primaryColor.withValues(alpha: 0.7),
+                    ),
                   ),
                 ),
               ],
