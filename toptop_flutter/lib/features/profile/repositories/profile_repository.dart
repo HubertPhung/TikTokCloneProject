@@ -114,6 +114,20 @@ class ProfileRepository {
         .doc(uid)
         .update({'username': newUsername});
 
+    // 3. Đồng bộ hóa tên người dùng vào tất cả video đã đăng
+    final videosQuery = await _firestore
+        .collection(AppConstants.videosCollection)
+        .where('authorId', isEqualTo: uid)
+        .get();
+
+    if (videosQuery.docs.isNotEmpty) {
+      final batch = _firestore.batch();
+      for (final doc in videosQuery.docs) {
+        batch.update(doc.reference, {'username': newUsername});
+      }
+      await batch.commit();
+    }
+
     return true;
   }
 

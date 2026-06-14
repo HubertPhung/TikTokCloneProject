@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../models/video_model.dart';
 
 /// Widget hiển thị thông tin đè lên Video (Tên tác giả, mô tả, hashtag, nhạc)
 /// Port từ VideoAdapter.VideoViewHolder.updateMetadataUI() — Premium upgrade
-class VideoOverlay extends StatefulWidget {
+class VideoOverlay extends ConsumerStatefulWidget {
   final VideoModel video;
   final VoidCallback? onCampaignBadgeTap;
 
@@ -15,10 +17,10 @@ class VideoOverlay extends StatefulWidget {
   });
 
   @override
-  State<VideoOverlay> createState() => _VideoOverlayState();
+  ConsumerState<VideoOverlay> createState() => _VideoOverlayState();
 }
 
-class _VideoOverlayState extends State<VideoOverlay>
+class _VideoOverlayState extends ConsumerState<VideoOverlay>
     with SingleTickerProviderStateMixin {
   late AnimationController _marqueeController;
 
@@ -45,6 +47,9 @@ class _VideoOverlayState extends State<VideoOverlay>
 
   @override
   Widget build(BuildContext context) {
+    final authorProfile = ref.watch(userProfileStreamProvider(widget.video.authorId)).valueOrNull;
+    final username = authorProfile?.username ?? widget.video.username;
+
     return Positioned(
       left: 0,
       bottom: 0,
@@ -87,7 +92,7 @@ class _VideoOverlayState extends State<VideoOverlay>
                     ],
                   ),
                   child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('🌲', style: TextStyle(fontSize: 12)),
                       SizedBox(width: 4),
@@ -109,7 +114,7 @@ class _VideoOverlayState extends State<VideoOverlay>
 
             // Tên tác giả
             Text(
-              widget.video.username.isNotEmpty ? '@${widget.video.username}' : '@User',
+              username.isNotEmpty ? '@$username' : '@User',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
@@ -181,7 +186,7 @@ class _VideoOverlayState extends State<VideoOverlay>
                             child: FractionalTranslation(
                               translation: Offset(1.0 - 2.0 * _marqueeController.value, 0),
                               child: Text(
-                                '♪ Nhạc gốc — ${widget.video.username.isNotEmpty ? widget.video.username : "TopTop"} • Đang phát',
+                                '♪ Nhạc gốc — ${username.isNotEmpty ? username : "TopTop"} • Đang phát',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.8),
                                   fontSize: 12,

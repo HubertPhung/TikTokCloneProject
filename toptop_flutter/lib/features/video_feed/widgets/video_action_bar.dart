@@ -9,6 +9,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/video_model.dart';
 import '../providers/video_provider.dart';
 import '../../comments/widgets/comment_bottom_sheet.dart';
+import '../../profile/providers/profile_provider.dart';
 
 /// Sidebar chứa các nút tương tác (Avatar, Like, Bình luận, Chia sẻ, Tắt/Bật âm)
 /// Port từ VideoAdapter.VideoViewHolder (imvLike, imvComment, imvAvatar, etc.)
@@ -33,7 +34,7 @@ class VideoActionBar extends ConsumerWidget {
           Consumer(
             builder: (context, ref, child) {
               final currentUser = ref.watch(currentUserProvider);
-              final authorProfile = ref.watch(videoAuthorProfileProvider(video.authorId)).valueOrNull;
+              final authorProfile = ref.watch(userProfileStreamProvider(video.authorId)).valueOrNull;
               final avatarUrl = authorProfile?.avatarUrl ?? '';
 
               return GestureDetector(
