@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -60,7 +61,10 @@ class BottomNavShell extends StatelessWidget {
                     ),
                     // Nút Add Video ở giữa — Premium TikTok style
                     GestureDetector(
-                      onTap: () => context.push('/camera'),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.push('/camera');
+                      },
                       child: Container(
                         width: 48,
                         height: 32,
@@ -119,6 +123,10 @@ class BottomNavShell extends StatelessWidget {
     // Index 2 = nút Add Video → đã xử lý riêng
     if (uiIndex == 2) return;
     final branchIndex = uiIndex > 2 ? uiIndex - 1 : uiIndex;
+    
+    // Rung xúc giác khi chuyển tab
+    HapticFeedback.selectionClick();
+    
     navigationShell.goBranch(
       branchIndex,
       initialLocation: branchIndex == navigationShell.currentIndex,

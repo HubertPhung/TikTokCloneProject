@@ -290,7 +290,7 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
                       radius: 18,
                       backgroundColor: Colors.grey[800],
                       backgroundImage: myAvatarUrl.isNotEmpty
-                          ? CachedNetworkImageProvider(myAvatarUrl)
+                          ? CachedNetworkImageProvider(myAvatarUrl, maxWidth: 80)
                           : null,
                       child: myAvatarUrl.isEmpty
                           ? const Icon(Icons.person, color: Colors.white, size: 18)

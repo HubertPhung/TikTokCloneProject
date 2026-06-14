@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shimmer_loading.dart';
 import '../../auth/models/profile_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../video_feed/models/video_model.dart';
@@ -425,12 +426,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
               },
             );
           },
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 40.0),
-              child: CircularProgressIndicator(color: AppTheme.primaryColor),
-            ),
-          ),
+          loading: () => const ShimmerVideoGrid(),
           error: (err, _) => Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40.0),
@@ -495,9 +491,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
           },
         );
       },
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryColor),
-      ),
+      loading: () => const ShimmerInboxList(),
       error: (err, _) => Center(
         child: Text('Lỗi: $err', style: const TextStyle(color: Colors.red)),
       ),
@@ -532,9 +526,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
           },
         );
       },
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryColor),
-      ),
+      loading: () => const ShimmerVideoGrid(),
       error: (err, _) => Center(
         child: Text('Lỗi: $err', style: const TextStyle(color: Colors.red)),
       ),
@@ -557,7 +549,7 @@ class _UserSearchTile extends ConsumerWidget {
         radius: 24,
         backgroundColor: Colors.grey[850],
         backgroundImage: profile.avatarUrl.isNotEmpty
-            ? CachedNetworkImageProvider(profile.avatarUrl)
+            ? CachedNetworkImageProvider(profile.avatarUrl, maxWidth: 100)
             : null,
         child: profile.avatarUrl.isEmpty
             ? const Icon(Icons.person, color: Colors.white, size: 24)
@@ -610,22 +602,24 @@ class _VideoGridItem extends StatelessWidget {
       }
     }
 
-    return GestureDetector(
-      onTap: () {
-        context.push('/video/${video.videoId}');
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          color: Colors.grey[900],
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Dynamic thumbnail from Cloudinary
-              CachedNetworkImage(
-                imageUrl: thumbUrl,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: () {
+          context.push('/video/${video.videoId}');
+        },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            color: Colors.grey[900],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Dynamic thumbnail from Cloudinary
+                CachedNetworkImage(
+                  imageUrl: thumbUrl,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 250, // Tối ưu kích thước lưu cache bộ nhớ
+                  placeholder: (context, url) => Container(
                   color: Colors.grey[900],
                   child: const Center(
                     child: CircularProgressIndicator(
@@ -684,8 +678,9 @@ class _VideoGridItem extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   String _formatWatchCount(int count) {
     if (count >= 1000000) {

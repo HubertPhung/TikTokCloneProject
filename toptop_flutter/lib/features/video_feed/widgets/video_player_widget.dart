@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -38,7 +39,6 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
 class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
     with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
-  Future<void>? _initializeFuture;
   bool _isVisible = false;
   bool _hasLoggedWatch = false;
   final List<FloatingHeart> _hearts = [];
@@ -53,7 +53,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
     _controller = VideoPlayerController.networkUrl(
       Uri.parse(widget.video.videoUri),
     );
-    _initializeFuture = _controller.initialize().then((_) {
+    _controller.initialize().then((_) {
       if (mounted) {
         _controller.setLooping(true);
         // Đồng bộ âm lượng ban đầu với mute state
@@ -118,6 +118,9 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
   }
 
   void _handleDoubleTap(Offset localPosition) {
+    // Rung xúc giác khi double tap thả tim
+    HapticFeedback.mediumImpact();
+
     // 1. Thêm trái tim bay
     final randomAngle = (math.Random().nextDouble() * 40 - 20) * math.pi / 180;
     final newHeart = FloatingHeart(
@@ -198,11 +201,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
           GestureDetector(
             onTap: _handleTap,
             onDoubleTapDown: (details) => _handleDoubleTap(details.localPosition),
-            child: FutureBuilder(
-              future: _initializeFuture,
-              builder: (context, snapshot) {
-                if (_controller.value.isInitialized) {
-                  return SizedBox.expand(
+            child: _controller.value.isInitialized
+                ? SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,
                       child: SizedBox(
@@ -211,19 +211,15 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
                         child: VideoPlayer(_controller),
                       ),
                     ),
-                  );
-                } else {
-                  return Container(
+                  )
+                : Container(
                     color: Colors.black,
                     child: const Center(
                       child: CircularProgressIndicator(
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
                       ),
                     ),
-                  );
-                }
-              },
-            ),
+                  ),
           ),
 
           // Hiển thị icon Pause ở giữa màn hình nếu đang tạm dừng thủ công
@@ -232,7 +228,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
               alignment: Alignment.center,
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.black45,
                   shape: BoxShape.circle,
                 ),
@@ -275,45 +271,47 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
             return Positioned(
               left: heart.position.dx - 50,
               top: heart.position.dy - 50,
-              child: TweenAnimationBuilder<double>(
-                key: heart.key,
-                duration: const Duration(milliseconds: 700),
-                tween: Tween<double>(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
-                  // value chạy từ 0.0 -> 1.0
-                  // 0.0 -> 0.3: Scale up và Fade in
-                  // 0.3 -> 1.0: Fly up, Rotate và Fade out
-                  double scale = 1.0;
-                  double opacity = 1.0;
-                  double translateUp = 0.0;
+              child: RepaintBoundary(
+                child: TweenAnimationBuilder<double>(
+                  key: heart.key,
+                  duration: const Duration(milliseconds: 700),
+                  tween: Tween<double>(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    // value chạy từ 0.0 -> 1.0
+                    // 0.0 -> 0.3: Scale up và Fade in
+                    // 0.3 -> 1.0: Fly up, Rotate và Fade out
+                    double scale = 1.0;
+                    double opacity = 1.0;
+                    double translateUp = 0.0;
 
-                  if (value < 0.3) {
-                    scale = (value / 0.3) * 1.3;
-                    opacity = value / 0.3;
-                  } else {
-                    scale = 1.3 - ((value - 0.3) / 0.7) * 0.5;
-                    opacity = 1.0 - (value - 0.3) / 0.7;
-                    translateUp = ((value - 0.3) / 0.7) * -120;
-                  }
+                    if (value < 0.3) {
+                      scale = (value / 0.3) * 1.3;
+                      opacity = value / 0.3;
+                    } else {
+                      scale = 1.3 - ((value - 0.3) / 0.7) * 0.5;
+                      opacity = 1.0 - (value - 0.3) / 0.7;
+                      translateUp = ((value - 0.3) / 0.7) * -120;
+                    }
 
-                  return Opacity(
-                    opacity: opacity.clamp(0.0, 1.0),
-                    child: Transform.translate(
-                      offset: Offset(0, translateUp),
-                      child: Transform.rotate(
-                        angle: heart.rotation * (value * 1.5),
-                        child: Transform.scale(
-                          scale: scale.clamp(0.0, 2.0),
-                          child: const Icon(
-                            Icons.favorite,
-                            size: 100,
-                            color: Color(0xFFFE2C55),
+                    return Opacity(
+                      opacity: opacity.clamp(0.0, 1.0),
+                      child: Transform.translate(
+                        offset: Offset(0, translateUp),
+                        child: Transform.rotate(
+                          angle: heart.rotation * (value * 1.5),
+                          child: Transform.scale(
+                            scale: scale.clamp(0.0, 2.0),
+                            child: const Icon(
+                              Icons.favorite,
+                              size: 100,
+                              color: Color(0xFFFE2C55),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             );
           }),

@@ -30,6 +30,28 @@ import 'package:toptop_flutter/shared/widgets/bottom_nav_shell.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
+  CustomTransitionPage<void> buildSlidePage({
+    required LocalKey key,
+    required Widget child,
+  }) {
+    return CustomTransitionPage<void>(
+      key: key,
+      child: child,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeInOut,
+          )),
+          child: child,
+        );
+      },
+    );
+  }
+
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: true,
@@ -176,56 +198,74 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Profile người khác (bên ngoài shell — fullscreen)
       GoRoute(
         path: '/user/:userId',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final userId = state.pathParameters['userId'] ?? '';
-          return ProfileScreen(userId: userId);
+          return buildSlidePage(
+            key: state.pageKey,
+            child: ProfileScreen(userId: userId),
+          );
         },
       ),
 
       // Followers list
       GoRoute(
         path: '/user/:userId/followers',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final userId = state.pathParameters['userId'] ?? '';
-          return FollowListScreen(userId: userId, initialTabIndex: 1);
+          return buildSlidePage(
+            key: state.pageKey,
+            child: FollowListScreen(userId: userId, initialTabIndex: 1),
+          );
         },
       ),
 
       // Following list
       GoRoute(
         path: '/user/:userId/following',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final userId = state.pathParameters['userId'] ?? '';
-          return FollowListScreen(userId: userId, initialTabIndex: 0);
+          return buildSlidePage(
+            key: state.pageKey,
+            child: FollowListScreen(userId: userId, initialTabIndex: 0),
+          );
         },
       ),
 
       // Edit profile
       GoRoute(
         path: '/profile/edit',
-        builder: (context, state) => const EditProfileScreen(),
+        pageBuilder: (context, state) => buildSlidePage(
+          key: state.pageKey,
+          child: const EditProfileScreen(),
+        ),
       ),
 
       // Edit field
       GoRoute(
         path: '/profile/edit/:field',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final field = state.pathParameters['field'] ?? '';
-          return EditFieldScreen(field: field);
+          return buildSlidePage(
+            key: state.pageKey,
+            child: EditFieldScreen(field: field),
+          );
         },
       ),
 
       // Màn hình chat chi tiết
       GoRoute(
         path: '/chat/:receiverId',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final receiverId = state.pathParameters['receiverId'] ?? '';
           final name = state.uri.queryParameters['name'] ?? '';
           final avatar = state.uri.queryParameters['avatar'] ?? '';
-          return ChatScreen(
-            receiverId: receiverId,
-            receiverName: name,
-            receiverAvatar: avatar,
+          return buildSlidePage(
+            key: state.pageKey,
+            child: ChatScreen(
+              receiverId: receiverId,
+              receiverName: name,
+              receiverAvatar: avatar,
+            ),
           );
         },
       ),
@@ -233,25 +273,40 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Màn hình tất cả thông báo hoạt động
       GoRoute(
         path: '/notifications',
-        builder: (context, state) => const NotificationsScreen(),
+        pageBuilder: (context, state) => buildSlidePage(
+          key: state.pageKey,
+          child: const NotificationsScreen(),
+        ),
       ),
 
       // Các màn hình Cài đặt & Quyền riêng tư
       GoRoute(
         path: '/settings',
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) => buildSlidePage(
+          key: state.pageKey,
+          child: const SettingsScreen(),
+        ),
         routes: [
           GoRoute(
             path: 'account',
-            builder: (context, state) => const AccountSettingsScreen(),
+            pageBuilder: (context, state) => buildSlidePage(
+              key: state.pageKey,
+              child: const AccountSettingsScreen(),
+            ),
           ),
           GoRoute(
             path: 'password',
-            builder: (context, state) => const ChangePasswordScreen(),
+            pageBuilder: (context, state) => buildSlidePage(
+              key: state.pageKey,
+              child: const ChangePasswordScreen(),
+            ),
           ),
           GoRoute(
             path: 'delete-account',
-            builder: (context, state) => const DeleteAccountScreen(),
+            pageBuilder: (context, state) => buildSlidePage(
+              key: state.pageKey,
+              child: const DeleteAccountScreen(),
+            ),
           ),
         ],
       ),

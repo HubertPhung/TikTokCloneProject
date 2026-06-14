@@ -433,6 +433,7 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                                         ? CachedNetworkImage(
                                             imageUrl: _previewUrl,
                                             fit: BoxFit.cover,
+                                            memCacheWidth: 200, // Tối ưu kích thước lưu cache bộ nhớ
                                             placeholder: (context, url) =>
                                                 const Icon(Icons.image, color: Colors.white24),
                                             errorWidget: (context, url, error) =>

@@ -173,26 +173,28 @@ class _VideoOverlayState extends State<VideoOverlay>
                 Expanded(
                   child: SizedBox(
                     height: 16,
-                    child: AnimatedBuilder(
-                      animation: _marqueeController,
-                      builder: (context, child) {
-                        return ClipRect(
-                          child: FractionalTranslation(
-                            translation: Offset(1.0 - 2.0 * _marqueeController.value, 0),
-                            child: Text(
-                              '♪ Nhạc gốc — ${widget.video.username.isNotEmpty ? widget.video.username : "TopTop"} • Đang phát',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
+                    child: RepaintBoundary(
+                      child: AnimatedBuilder(
+                        animation: _marqueeController,
+                        builder: (context, child) {
+                          return ClipRect(
+                            child: FractionalTranslation(
+                              translation: Offset(1.0 - 2.0 * _marqueeController.value, 0),
+                              child: Text(
+                                '♪ Nhạc gốc — ${widget.video.username.isNotEmpty ? widget.video.username : "TopTop"} • Đang phát',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.visible,
+                                softWrap: false,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.visible,
-                              softWrap: false,
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),

@@ -113,7 +113,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         radius: 54,
                         backgroundColor: isDark ? Colors.grey[900] : Colors.grey[300],
                         backgroundImage: profile.avatarUrl.isNotEmpty
-                            ? CachedNetworkImageProvider(profile.avatarUrl)
+                            ? CachedNetworkImageProvider(profile.avatarUrl, maxWidth: 120)
                             : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                         child: profile.avatarUrl.isEmpty
                             ? Icon(Icons.person, size: 54, color: isDark ? Colors.white54 : Colors.grey[600])

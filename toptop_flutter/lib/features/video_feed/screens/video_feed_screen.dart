@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shimmer_loading.dart';
 import '../providers/video_provider.dart';
 import '../widgets/video_action_bar.dart';
 import '../widgets/video_overlay.dart';
@@ -53,42 +54,46 @@ class VideoFeedScreen extends ConsumerWidget {
               } else if (item is VideoItem) {
                 final video = item.video;
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // 1. Trình phát Video nền
-                    VideoPlayerWidget(video: video),
+                return GestureDetector(
+                  onHorizontalDragEnd: (details) {
+                    // Nhận diện vuốt trái (từ phải qua trái) trên video feed để chuyển sang trang cá nhân tác giả
+                    if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
+                      context.push('/user/${video.authorId}');
+                    }
+                  },
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // 1. Trình phát Video nền
+                      VideoPlayerWidget(video: video),
 
-                    // 2. Overlay thông tin ở góc trái dưới
-                    VideoOverlay(
-                      video: video,
-                      onCampaignBadgeTap: () {
-                        // Ghi nhận click chiến dịch
-                        ref.read(videoRepositoryProvider).recordCampaignClick(video.videoId);
-                        
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Cảm ơn bạn đã tham gia chiến dịch quảng bá du lịch Đà Lạt! 🌲'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
+                      // 2. Overlay thông tin ở góc trái dưới
+                      VideoOverlay(
+                        video: video,
+                        onCampaignBadgeTap: () {
+                          // Ghi nhận click chiến dịch
+                          ref.read(videoRepositoryProvider).recordCampaignClick(video.videoId);
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Cảm ơn bạn đã tham gia chiến dịch quảng bá du lịch Đà Lạt! 🌲'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
 
-                    // 3. Action bar dọc ở góc phải dưới
-                    VideoActionBar(video: video),
-                  ],
+                      // 3. Action bar dọc ở góc phải dưới
+                      VideoActionBar(video: video),
+                    ],
+                  ),
                 );
               }
               return const SizedBox.shrink();
             },
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-          ),
-        ),
+        loading: () => const ShimmerVideoFeed(),
         error: (error, stackTrace) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

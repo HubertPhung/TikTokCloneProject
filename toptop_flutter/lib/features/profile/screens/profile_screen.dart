@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shimmer_loading.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/profile_provider.dart';
 import '../widgets/avatar_preview_dialog.dart';
@@ -181,7 +182,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           radius: 45,
                           backgroundColor: Colors.grey[900],
                           backgroundImage: profile.avatarUrl.isNotEmpty
-                              ? CachedNetworkImageProvider(profile.avatarUrl)
+                              ? CachedNetworkImageProvider(profile.avatarUrl, maxWidth: 120)
                               : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                           child: profile.avatarUrl.isEmpty
                               ? const Icon(Icons.person, size: 48, color: Colors.white54)
@@ -479,67 +480,65 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         itemBuilder: (context, index) {
                           final video = videos[index];
 
-                          return GestureDetector(
-                            onTap: () {
-                              context.push('/video/${video.videoId}');
-                            },
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Thumbnail (Dùng CachedNetworkImage)
-                                CachedNetworkImage(
-                                  imageUrl: video.thumbnailUri,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: Colors.grey[900],
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white24),
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) => Container(
-                                    color: Colors.grey[900],
-                                    child: const Icon(Icons.broken_image, color: Colors.white24),
-                                  ),
-                                ),
-
-                                // Xem lượt xem ở góc trái dưới
-                                Positioned(
-                                  left: 6,
-                                  bottom: 6,
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.play_arrow_outlined,
-                                        color: Colors.white,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        _formatWatchCount(video.watchCount),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                          return RepaintBoundary(
+                            child: GestureDetector(
+                              onTap: () {
+                                context.push('/video/${video.videoId}');
+                              },
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  // Thumbnail (Dùng CachedNetworkImage)
+                                  CachedNetworkImage(
+                                    imageUrl: video.thumbnailUri,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 250, // Tối ưu kích thước lưu cache bộ nhớ
+                                    placeholder: (context, url) => Container(
+                                      color: Colors.grey[900],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white24),
                                         ),
                                       ),
-                                    ],
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      color: Colors.grey[900],
+                                      child: const Icon(Icons.broken_image, color: Colors.white24),
+                                    ),
                                   ),
-                                ),
-                              ],
+
+                                  // Xem lượt xem ở góc trái dưới
+                                  Positioned(
+                                    left: 6,
+                                    bottom: 6,
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.play_arrow_outlined,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatWatchCount(video.watchCount),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
                       );
                     },
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(48),
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                      ),
-                    ),
+                    loading: () => const ShimmerVideoGrid(),
                     error: (error, _) => Padding(
                       padding: const EdgeInsets.all(48),
                       child: Text('Lỗi: ${error.toString()}', style: const TextStyle(color: Colors.redAccent)),

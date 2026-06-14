@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/shimmer_loading.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/active_users_row.dart';
@@ -118,11 +119,7 @@ class InboxScreen extends ConsumerWidget {
                   },
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFE2C55)),
-                ),
-              ),
+              loading: () => const ShimmerInboxList(),
               error: (error, _) => Center(
                 child: Text(
                   'Lỗi tải tin nhắn: $error',
@@ -199,7 +196,7 @@ class _ConversationTile extends ConsumerWidget {
           CircleAvatar(
             radius: 26,
             backgroundColor: isSystem ? const Color(0xFFFE2C55).withValues(alpha: 0.1) : Colors.grey[800],
-            backgroundImage: avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl) : null,
+            backgroundImage: avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl, maxWidth: 100) : null,
             child: avatarUrl.isEmpty
                 ? Icon(
                     isSystem ? Icons.verified_user_rounded : Icons.person,
@@ -212,23 +209,25 @@ class _ConversationTile extends ConsumerWidget {
             Positioned(
               right: 0,
               bottom: 0,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: AppTheme.successColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.backgroundColor,
-                    width: 2.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.successColor.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                      spreadRadius: 1,
+              child: RepaintBoundary(
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: AppTheme.successColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.backgroundColor,
+                      width: 2.5,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.successColor.withValues(alpha: 0.5),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

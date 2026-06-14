@@ -22,23 +22,6 @@ class VideoActionBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currentUser = ref.watch(currentUserProvider);
-    final userProfile = ref.watch(currentUserProfileProvider).valueOrNull;
-    final isMuted = ref.watch(videoMuteProvider);
-
-    // Watch like state
-    final likesState = ref.watch(videoLikesStateProvider(video.videoId));
-    final likesCount = likesState.valueOrNull?['count'] as int? ?? video.totalLikes;
-    final likedUsers = likesState.valueOrNull?['users'] as Map<String, dynamic>? ?? {};
-    final isLiked = currentUser != null && likedUsers[currentUser.uid] == true;
-
-    // Watch comments count
-    final commentsCount = ref.watch(videoCommentsCountProvider(video.videoId)).valueOrNull ?? video.totalComments;
-
-    // Watch author profile
-    final authorProfile = ref.watch(videoAuthorProfileProvider(video.authorId)).valueOrNull;
-    final avatarUrl = authorProfile?.avatarUrl ?? '';
-
     return Positioned(
       right: 12,
       bottom: 60,
@@ -47,132 +30,163 @@ class VideoActionBar extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           // 1. Tác giả Avatar
-          GestureDetector(
-            onTap: () {
-              if (currentUser != null && currentUser.uid == video.authorId) {
-                context.go('/profile');
-              } else {
-                context.push('/user/${video.authorId}');
-              }
-            },
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 1.5),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black38,
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: avatarUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: avatarUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey[850],
-                              child: const Icon(Icons.person, color: Colors.white),
+          Consumer(
+            builder: (context, ref, child) {
+              final currentUser = ref.watch(currentUserProvider);
+              final authorProfile = ref.watch(videoAuthorProfileProvider(video.authorId)).valueOrNull;
+              final avatarUrl = authorProfile?.avatarUrl ?? '';
+
+              return GestureDetector(
+                onTap: () {
+                  if (currentUser != null && currentUser.uid == video.authorId) {
+                    context.go('/profile');
+                  } else {
+                    context.push('/user/${video.authorId}');
+                  }
+                },
+                child: RepaintBoundary(
+                  child: Stack(
+                    alignment: Alignment.bottomCenter,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black38,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
                             ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[850],
-                              child: const Icon(Icons.person, color: Colors.white),
-                            ),
-                          )
-                        : Image.asset(
-                            'assets/images/default_avatar.png', // Fallback
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                              color: Colors.grey[850],
-                              child: const Icon(Icons.person, color: Colors.white),
-                            ),
-                          ),
-                  ),
-                ),
-                // Nút Follow mini giống TikTok
-                if (currentUser == null || currentUser.uid != video.authorId)
-                  Positioned(
-                    bottom: -6,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.add,
-                          color: Colors.white,
-                          size: 14,
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: avatarUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: avatarUrl,
+                                  fit: BoxFit.cover,
+                                  memCacheWidth: 100, // Tối ưu kích thước lưu cache bộ nhớ
+                                  placeholder: (context, url) => Container(
+                                    color: Colors.grey[850],
+                                    child: const Icon(Icons.person, color: Colors.white),
+                                  ),
+                                  errorWidget: (context, url, error) => Container(
+                                    color: Colors.grey[850],
+                                    child: const Icon(Icons.person, color: Colors.white),
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/images/default_avatar.png', // Fallback
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                    color: Colors.grey[850],
+                                    child: const Icon(Icons.person, color: Colors.white),
+                                  ),
+                                ),
                         ),
                       ),
-                    ),
+                      // Nút Follow mini giống TikTok
+                      if (currentUser == null || currentUser.uid != video.authorId)
+                        Positioned(
+                          bottom: -6,
+                          child: Container(
+                            width: 20,
+                            height: 20,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.add,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 
           // 2. Nút Thích (Like)
-          _buildActionButton(
-            icon: Icon(
-              Icons.favorite,
-              color: isLiked ? AppTheme.primaryColor : Colors.white,
-              size: 36,
-            ),
-            label: _formatCount(likesCount),
-            onTap: () async {
-              if (currentUser == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng đăng nhập để thích video!')),
-                );
-                context.go('/auth');
-                return;
-              }
-              final username = userProfile?.username ?? currentUser.email?.split('@')[0] ?? '';
-              await ref.read(videoRepositoryProvider).toggleLike(
-                    videoId: video.videoId,
-                    authorId: video.authorId,
-                    currentUid: currentUser.uid,
-                    isLiked: !isLiked,
-                    currentUsername: username,
-                  );
+          Consumer(
+            builder: (context, ref, child) {
+              final currentUser = ref.watch(currentUserProvider);
+              final userProfile = ref.watch(currentUserProfileProvider).valueOrNull;
+              final likesState = ref.watch(videoLikesStateProvider(video.videoId));
+              final likesCount = likesState.valueOrNull?['count'] as int? ?? video.totalLikes;
+              final likedUsers = likesState.valueOrNull?['users'] as Map<String, dynamic>? ?? {};
+              final isLiked = currentUser != null && likedUsers[currentUser.uid] == true;
+
+              return _buildActionButton(
+                icon: Icon(
+                  Icons.favorite,
+                  color: isLiked ? AppTheme.primaryColor : Colors.white,
+                  size: 36,
+                ),
+                label: _formatCount(likesCount),
+                onTap: () async {
+                  HapticFeedback.lightImpact();
+                  if (currentUser == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng đăng nhập để thích video!')),
+                    );
+                    context.go('/auth');
+                    return;
+                  }
+                  final username = userProfile?.username ?? currentUser.email?.split('@')[0] ?? '';
+                  await ref.read(videoRepositoryProvider).toggleLike(
+                        videoId: video.videoId,
+                        authorId: video.authorId,
+                        currentUid: currentUser.uid,
+                        isLiked: !isLiked,
+                        currentUsername: username,
+                      );
+                },
+              );
             },
           ),
           const SizedBox(height: 18),
 
           // 3. Nút Bình luận
-          _buildActionButton(
-            icon: const Icon(
-              Icons.comment,
-              color: Colors.white,
-              size: 34,
-            ),
-            label: _formatCount(commentsCount),
-            onTap: () {
-              if (currentUser == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Vui lòng đăng nhập để bình luận!')),
-                );
-                context.go('/auth');
-                return;
-              }
-              _showCommentsBottomSheet(context, video.videoId, video.authorId);
+          Consumer(
+            builder: (context, ref, child) {
+              final currentUser = ref.watch(currentUserProvider);
+              final commentsCount = ref.watch(videoCommentsCountProvider(video.videoId)).valueOrNull ?? video.totalComments;
+
+              return _buildActionButton(
+                icon: const Icon(
+                  Icons.comment,
+                  color: Colors.white,
+                  size: 34,
+                ),
+                label: _formatCount(commentsCount),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  if (currentUser == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Vui lòng đăng nhập để bình luận!')),
+                    );
+                    context.go('/auth');
+                    return;
+                  }
+                  _showCommentsBottomSheet(context, video.videoId, video.authorId);
+                },
+              );
             },
           ),
           const SizedBox(height: 18),
 
-          // 4. Nút Chia sẻ
+          // 4. Nút Chia sẻ (Nút tĩnh, chỉ cần truy cập ref khi bấm)
           _buildActionButton(
             icon: const Icon(
               Icons.share,
@@ -181,21 +195,29 @@ class VideoActionBar extends ConsumerWidget {
             ),
             label: 'Chia sẻ',
             onTap: () {
+              HapticFeedback.lightImpact();
               _showShareBottomSheet(context, ref, video);
             },
           ),
           const SizedBox(height: 18),
 
           // 5. Nút Bật/Tắt âm
-          _buildActionButton(
-            icon: Icon(
-              isMuted ? Icons.volume_off : Icons.volume_up,
-              color: Colors.white,
-              size: 30,
-            ),
-            label: isMuted ? 'Muted' : 'Mở',
-            onTap: () {
-              ref.read(videoMuteProvider.notifier).state = !isMuted;
+          Consumer(
+            builder: (context, ref, child) {
+              final isMuted = ref.watch(videoMuteProvider);
+
+              return _buildActionButton(
+                icon: Icon(
+                  isMuted ? Icons.volume_off : Icons.volume_up,
+                  color: Colors.white,
+                  size: 30,
+                ),
+                label: isMuted ? 'Muted' : 'Mở',
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  ref.read(videoMuteProvider.notifier).state = !isMuted;
+                },
+              );
             },
           ),
         ],

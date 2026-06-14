@@ -102,6 +102,7 @@ class CommentTile extends ConsumerWidget {
                   ? CachedNetworkImage(
                       imageUrl: avatarUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: 80, // Tối ưu kích thước lưu cache bộ nhớ
                       placeholder: (context, url) => const Icon(
                         Icons.person,
                         color: Colors.white24,
