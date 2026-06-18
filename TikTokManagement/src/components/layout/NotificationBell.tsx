@@ -96,7 +96,7 @@ export function NotificationBell() {
   const getIcon = (type: string) => {
     switch (type) {
       case 'report': return <AlertTriangle className="w-4 h-4 text-error" />;
-      case 'moderation': return <Video className="w-4 h-4 text-secondary-container" />;
+      case 'moderation': return <Video className="w-4 h-4 text-secondary" />;
       case 'user_ban': return <UserX className="w-4 h-4 text-tertiary" />;
       default: return <ShieldCheck className="w-4 h-4 text-primary" />;
     }

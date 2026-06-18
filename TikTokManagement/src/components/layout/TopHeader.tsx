@@ -32,7 +32,7 @@ export function TopHeader({ title, onMenuClick }: TopHeaderProps) {
     if (!user) return null;
     const roleConfig: Record<string, { colors: string; label: string }> = {
       admin: { colors: 'bg-primary/10 text-primary border-primary/20', label: 'Admin' },
-      moderator: { colors: 'bg-secondary-container/10 text-secondary-container border-secondary-container/20', label: 'Moderator' },
+      moderator: { colors: 'bg-secondary/10 text-secondary border-secondary/20', label: 'Moderator' },
       viewer: { colors: 'bg-tertiary/10 text-tertiary border-tertiary/20', label: 'Viewer' },
     };
     const config = roleConfig[user.role];

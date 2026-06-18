@@ -5,20 +5,28 @@ class NotificationModel {
   final String fromUsername;
   final String action; // "0": Follow, "1": Comment, "2": Like, "3": Chat, "APPEAL_REQUEST|..."
   final int timestamp;
+  final String? videoId;
 
   NotificationModel({
     this.notificationId = '',
     required this.fromUsername,
     required this.action,
     required this.timestamp,
+    this.videoId,
   });
 
   factory NotificationModel.fromMap(Map<dynamic, dynamic> map, {String id = ''}) {
+    final timestampVal = map['timestamp'];
+    final int timestamp = timestampVal is num
+        ? timestampVal.toInt()
+        : (int.tryParse(timestampVal?.toString() ?? '') ?? 0);
+
     return NotificationModel(
       notificationId: id,
       fromUsername: map['fromUsername'] as String? ?? '',
       action: map['action'] as String? ?? '',
-      timestamp: (map['timestamp'] as num?)?.toInt() ?? 0,
+      timestamp: timestamp,
+      videoId: map['videoId'] as String?,
     );
   }
 
@@ -26,6 +34,7 @@ class NotificationModel {
         'fromUsername': fromUsername,
         'action': action,
         'timestamp': timestamp,
+        'videoId': videoId,
       };
 
   NotificationModel copyWith({
@@ -33,12 +42,14 @@ class NotificationModel {
     String? fromUsername,
     String? action,
     int? timestamp,
+    String? videoId,
   }) {
     return NotificationModel(
       notificationId: notificationId ?? this.notificationId,
       fromUsername: fromUsername ?? this.fromUsername,
       action: action ?? this.action,
       timestamp: timestamp ?? this.timestamp,
+      videoId: videoId ?? this.videoId,
     );
   }
 }

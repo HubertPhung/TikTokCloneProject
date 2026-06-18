@@ -50,16 +50,8 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeNotifierProvider);
 
-    // Lắng nghe sự thay đổi Auth State để kích hoạt tự động Presence
-    ref.listen<AsyncValue<dynamic>>(authStateProvider, (previous, next) {
-      final user = next.valueOrNull;
-      if (user != null) {
-        final uid = user.uid as String;
-        // Kích hoạt lắng nghe trạng thái kết nối và cập nhật online
-        ref.read(chatRepositoryProvider).setupPresenceAutomation(uid);
-        ref.read(chatRepositoryProvider).updatePresence(uid, true);
-      }
-    });
+    // Kích hoạt tự động Presence & Kết nối (Riverpod tự động hủy subscription cũ khi logout)
+    ref.watch(currentUserPresenceProvider);
 
     return MaterialApp.router(
       title: 'TopTop',

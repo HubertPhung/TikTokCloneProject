@@ -46,7 +46,7 @@ export interface Video {
 }
 
 // --- Report ---
-export type ReportTargetType = 'video' | 'user' | 'comment';
+export type ReportTargetType = 'video' | 'video_ad' | 'user' | 'comment';
 export type ReportStatus = 'pending' | 'resolved' | 'dismissed';
 
 export interface Report {
@@ -71,3 +71,45 @@ export interface AuditLog {
   details: Record<string, string>;
   createdAt: number;
 }
+
+// --- AdTech (Quảng cáo) ---
+export type AdStatus = 'active' | 'paused' | 'pending' | 'expired';
+
+export interface Ad {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl: string;
+  thumbnail: string;
+  advertiserName: string;
+  advertiserId: string;
+  startDate: number;
+  endDate: number;
+  budget: number;
+  priority: number;
+  status: AdStatus;
+  ctaText: string;
+  targetUrl: string;
+}
+
+export interface Advertiser {
+  advertiserId: string;
+  companyName: string;
+  contactEmail: string;
+  balance: number;
+  status: 'active' | 'suspended' | 'pending';
+}
+
+export interface AdBooking {
+  bookingId: string;
+  advertiserId: string;
+  title: string;
+  description: string;
+  videoUri: string;
+  targetUrl: string;
+  requestedBudget: number;
+  createdAt: number;
+  status: 'pending' | 'approved' | 'rejected' | 'paused' | 'expired';
+  rejectReason?: string;
+}
+

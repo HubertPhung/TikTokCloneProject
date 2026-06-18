@@ -29,7 +29,7 @@ class VideoRepository {
         .snapshots()
         .map((snapshot) {
       final list = snapshot.docs
-          .map((doc) => VideoModel.fromMap(doc.data()))
+          .map((doc) => VideoModel.fromMap(doc.data(), doc.id))
           .where((video) =>
               video.moderationStatus != 'rejected' &&
               video.moderationStatus != 'pending')
@@ -91,6 +91,7 @@ class VideoRepository {
         'fromUsername': currentUsername.isNotEmpty ? currentUsername : 'Ai đó',
         'action': AppConstants.actionLike,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'videoId': videoId,
       });
     } else {
       // 1. Xóa user khỏi Firestore likes/{videoId}
@@ -118,13 +119,13 @@ class VideoRepository {
     await _firestore
         .collection(AppConstants.videosCollection)
         .doc(videoId)
-        .update({'watchCount': FieldValue.increment(1)});
+        .set({'watchCount': FieldValue.increment(1)}, SetOptions(merge: true));
 
-    // 2. Tăng trong video_summaries/{videoId}
+    // 2. Tăng trong video_summaries/{videoId} (an toàn với set+merge để không crash nếu chưa tồn tại)
     await _firestore
         .collection('video_summaries')
         .doc(videoId)
-        .update({'watchCount': FieldValue.increment(1)});
+        .set({'watchCount': FieldValue.increment(1)}, SetOptions(merge: true));
 
     // 3. Tăng trong profiles/{authorId}/public_videos/{videoId}
     await _firestore
@@ -132,7 +133,7 @@ class VideoRepository {
         .doc(authorId)
         .collection('public_videos')
         .doc(videoId)
-        .update({'watchCount': FieldValue.increment(1)});
+        .set({'watchCount': FieldValue.increment(1)}, SetOptions(merge: true));
   }
 
   /// Ghi nhận sở thích xem video thông qua phân tách hashtag
@@ -230,36 +231,22 @@ class VideoRepository {
 
     // 3. Xóa likes và comments liên kết
     batch.delete(_firestore.collection('likes').doc(videoId));
-    batch.delete(_firestore.collection('comments').doc(videoId));
+    // NOTE: Comments được lưu theo videoId field nên phải query trước
+    final commentsQuery = await _firestore
+        .collection('comments')
+        .where('videoId', isEqualTo: videoId)
+        .get();
+    for (final doc in commentsQuery.docs) {
+      batch.delete(doc.reference);
+    }
 
     // Thực hiện batch write
     await batch.commit();
   }
 
   /// Theo dõi danh sách video quảng cáo từ Firestore
-  /// Có hỗ trợ dữ liệu giả định (Mock Data) nếu collection trống
   Stream<List<AdModel>> watchAds() {
     return _firestore.collection('ads').snapshots().map((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        return [
-          AdModel(
-            adId: 'mock_ad_1',
-            videoUri: 'https://assets.mixkit.co/videos/preview/mixkit-forest-stream-in-the-sunlight-529-large.mp4',
-            sponsorName: 'Đà Lạt Travel Co.',
-            description: 'Khám phá Đà Lạt mộng mơ với tour du lịch 3 ngày 2 đêm trọn gói chỉ từ 1.990.000 VNĐ. Đặt ngay hôm nay nhận ưu đãi 20%!',
-            ctaText: 'Đặt tour ngay',
-            targetUrl: 'https://dalattrip.com',
-          ),
-          AdModel(
-            adId: 'mock_ad_2',
-            videoUri: 'https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-2213-large.mp4',
-            sponsorName: 'Thác Datanla Adventure',
-            description: 'Trải nghiệm đu dây vượt thác, xe trượt núi dài nhất Đông Nam Á tại Datanla Đà Lạt. Mở cửa từ 7:00 đến 17:00 hằng ngày.',
-            ctaText: 'Xem chi tiết',
-            targetUrl: 'https://datanla.vn',
-          ),
-        ];
-      }
       return snapshot.docs.map((doc) => AdModel.fromMap(doc.data(), doc.id)).toList();
     });
   }
@@ -282,5 +269,33 @@ class VideoRepository {
       'campaign': 'dalat',
       'clicks': FieldValue.increment(1),
     }, SetOptions(merge: true));
+  }
+
+  /// Ghi nhận lượt hiển thị quảng cáo (Impression)
+  Future<void> logAdImpression({required String adId, required String userId}) async {
+    await _firestore.collection('ad_impressions').add({
+      'adId': adId,
+      'userId': userId,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Ghi nhận lượt xem quảng cáo trên 2 giây (View)
+  Future<void> logAdView({required String adId, required String userId, required int durationMs}) async {
+    await _firestore.collection('ad_views').add({
+      'adId': adId,
+      'userId': userId,
+      'durationMs': durationMs,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Ghi nhận lượt nhấp chuột quảng cáo (Click)
+  Future<void> logAdClick({required String adId, required String userId}) async {
+    await _firestore.collection('ad_clicks').add({
+      'adId': adId,
+      'userId': userId,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
   }
 }

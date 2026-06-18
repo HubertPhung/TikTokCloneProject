@@ -116,7 +116,7 @@ class SearchRepository {
   List<VideoModel> _filterApprovedVideos(QuerySnapshot<Map<String, dynamic>> snapshot) {
     final List<VideoModel> list = [];
     for (final doc in snapshot.docs) {
-      final model = VideoModel.fromMap(doc.data());
+      final model = VideoModel.fromMap(doc.data(), doc.id);
       if (model.moderationStatus == 'rejected' || model.moderationStatus == 'pending') {
         continue;
       }

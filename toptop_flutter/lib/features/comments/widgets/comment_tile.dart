@@ -79,147 +79,188 @@ class CommentTile extends ConsumerWidget {
     final totalLikes =
         likesState.valueOrNull?['count'] as int? ?? comment.totalLikes;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: isReply ? 52.0 : 12.0,
-        right: 12.0,
-        top: 8.0,
-        bottom: 8.0,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Ảnh đại diện tác giả
-          Container(
-            width: isReply ? 28 : 36,
-            height: isReply ? 28 : 36,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.black26,
-            ),
-            child: ClipOval(
-              child: avatarUrl.isNotEmpty
-                  ? CachedNetworkImage(
-                      imageUrl: avatarUrl,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 80, // Tối ưu kích thước lưu cache bộ nhớ
-                      placeholder: (context, url) => const Icon(
-                        Icons.person,
-                        color: Colors.white24,
-                        size: 20,
-                      ),
-                      errorWidget: (context, url, error) => const Icon(
-                        Icons.person,
-                        color: Colors.white24,
-                        size: 20,
-                      ),
-                    )
-                  : const Icon(
-                      Icons.person,
-                      color: Colors.white54,
-                      size: 20,
-                    ),
-            ),
-          ),
-          const SizedBox(width: 10),
+    final isMyComment = currentUserId != null && comment.authorId == currentUserId;
 
-          // Nội dung bình luận
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Username
-                Text(
-                  username,
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onLongPress: isMyComment ? () => _showDeleteDialog(context, ref) : null,
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: isReply ? 52.0 : 12.0,
+          right: 12.0,
+          top: 8.0,
+          bottom: 8.0,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Ảnh đại diện tác giả
+            Container(
+              width: isReply ? 28 : 36,
+              height: isReply ? 28 : 36,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.black26,
+              ),
+              child: ClipOval(
+                child: avatarUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: avatarUrl,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 80, // Tối ưu kích thước lưu cache bộ nhớ
+                        placeholder: (context, url) => const Icon(
+                          Icons.person,
+                          color: Colors.white24,
+                          size: 20,
+                        ),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.person,
+                          color: Colors.white24,
+                          size: 20,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: Colors.white54,
+                        size: 20,
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // Nội dung bình luận
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Username
+                  Text(
+                    username,
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
+                  const SizedBox(height: 2),
 
-                // Nội dung text bình luận (phân biệt tag username cha nếu là câu trả lời)
-                RichText(
-                  text: TextSpan(
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      height: 1.3,
+                  // Nội dung text bình luận (phân biệt tag username cha nếu là câu trả lời)
+                  RichText(
+                    text: TextSpan(
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
+                      children: [
+                        if (isReply && comment.parentUsername.isNotEmpty) ...[
+                          TextSpan(
+                            text: '@${comment.parentUsername} ',
+                            style: const TextStyle(
+                              color: Color(0xFF3D85C6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        TextSpan(text: comment.content),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Dòng phản hồi / Thời gian
+                  Row(
                     children: [
-                      if (isReply && comment.parentUsername.isNotEmpty) ...[
-                        TextSpan(
-                          text: '@${comment.parentUsername} ',
-                          style: const TextStyle(
-                            color: Color(0xFF3D85C6),
-                            fontWeight: FontWeight.w500,
+                      Text(
+                        _formatTimestamp(comment.commentId),
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 11,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        onTap: onReplyTap,
+                        child: const Text(
+                          'Trả lời',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
-                      TextSpan(text: comment.content),
+                      ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 6),
-
-                // Dòng phản hồi / Thời gian
-                Row(
-                  children: [
-                    Text(
-                      _formatTimestamp(comment.commentId),
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    GestureDetector(
-                      onTap: onReplyTap,
-                      child: const Text(
-                        'Trả lời',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // Nút Like bình luận
-          GestureDetector(
-            onTap: () {
-              if (currentUserId == null) return;
-              ref.read(commentRepositoryProvider).toggleCommentLike(
-                    commentId: commentId,
-                    currentUid: currentUserId,
-                    isLiked: !isLiked,
-                  );
-            },
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? AppTheme.primaryColor : Colors.grey[600],
-                  size: 18,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  totalLikes.toString(),
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 11,
+            // Nút Like bình luận
+            GestureDetector(
+              onTap: () {
+                if (currentUserId == null) return;
+                ref.read(commentRepositoryProvider).toggleCommentLike(
+                      commentId: commentId,
+                      currentUid: currentUserId,
+                      isLiked: !isLiked,
+                    );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: isLiked ? AppTheme.primaryColor : Colors.grey[600],
+                    size: 18,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    totalLikes.toString(),
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text('Xóa bình luận', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: const Text('Bạn có chắc chắn muốn xóa bình luận này không?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await ref.read(commentRepositoryProvider).deleteComment(
+                      commentId: comment.commentId,
+                      videoId: comment.videoId,
+                      parentId: comment.parentId.isNotEmpty ? comment.parentId : null,
+                    );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi khi xóa bình luận: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Xóa', style: TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

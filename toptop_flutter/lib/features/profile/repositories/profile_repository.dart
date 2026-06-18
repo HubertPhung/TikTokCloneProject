@@ -71,7 +71,8 @@ class ProfileRepository {
         .collection(AppConstants.profilesCollection)
         .doc(uid)
         .update({
-      'avatarUrl': downloadUrl,
+      'avatar': downloadUrl,
+      'avatarUrl': downloadUrl, // Giữ cả hai field để tương thích ngược
     });
 
     // 3. Cập nhật users collection
@@ -79,6 +80,7 @@ class ProfileRepository {
         .collection(AppConstants.usersCollection)
         .doc(uid)
         .update({
+      'avatar': downloadUrl,
       'avatarUrl': downloadUrl,
     });
 
@@ -156,8 +158,18 @@ class ProfileRepository {
         .where('authorId', isEqualTo: uid)
         .snapshots()
         .map((snapshot) {
+      // Sắp xếp in-memory theo timestamp giảm dần
+      final docs = snapshot.docs.toList();
+      docs.sort((a, b) {
+        final aTime = (a.data()['timestamp'] as num?)?.toInt() ?? 0;
+        final bTime = (b.data()['timestamp'] as num?)?.toInt() ?? 0;
+        return bTime.compareTo(aTime);
+      });
+
       final list = <VideoSummaryModel>[];
-      for (final doc in snapshot.docs) {
+      final limitedDocs = docs.take(50);
+
+      for (final doc in limitedDocs) {
         final data = doc.data();
         final modStatus = data['moderationStatus'] as String?;
         if (modStatus == 'rejected') continue;
@@ -178,8 +190,9 @@ class ProfileRepository {
           }
         }
 
+        final vId = data['videoId'] as String? ?? '';
         list.add(VideoSummaryModel(
-          videoId: data['videoId'] as String? ?? '',
+          videoId: vId.isNotEmpty ? vId : doc.id,
           thumbnailUri: thumb,
           watchCount: (data['watchCount'] as num?)?.toInt() ?? 0,
         ));
@@ -272,22 +285,24 @@ class ProfileRepository {
   /// Đồng bộ lại follow counts dựa vào số tài liệu trong subcollection
   /// Port từ ProfileFragment.syncFollowCounts() và FollowActivity.syncFollowCounts()
   Future<void> syncFollowCounts(String uid) async {
-    final followersSnap = await _firestore
+    final followersCountSnap = await _firestore
         .collection(AppConstants.profilesCollection)
         .doc(uid)
         .collection('followers')
+        .where(FieldPath.documentId, isNotEqualTo: 'dump')
+        .count()
         .get();
 
-    final followingSnap = await _firestore
+    final followingCountSnap = await _firestore
         .collection(AppConstants.profilesCollection)
         .doc(uid)
         .collection('following')
+        .where(FieldPath.documentId, isNotEqualTo: 'dump')
+        .count()
         .get();
 
-    final followersCount =
-        followersSnap.docs.where((doc) => doc.id != 'dump').length;
-    final followingCount =
-        followingSnap.docs.where((doc) => doc.id != 'dump').length;
+    final followersCount = followersCountSnap.count ?? 0;
+    final followingCount = followingCountSnap.count ?? 0;
 
     await _firestore
         .collection(AppConstants.profilesCollection)

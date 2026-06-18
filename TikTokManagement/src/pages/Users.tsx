@@ -322,11 +322,11 @@ export function Users() {
                   </td>
                   <td className="py-4 px-6">
                     <span className={clsx(
-                      "font-label text-xs px-2 py-1 rounded",
-                      user.role === 'admin' ? "bg-primary/10 text-primary" : 
-                      user.role === 'moderator' ? "bg-secondary-container/10 text-secondary-container" : 
-                      user.role === 'viewer' ? "bg-tertiary/10 text-tertiary" :
-                      "text-on-surface-variant"
+                      "font-label text-xs px-2.5 py-1 rounded border font-semibold shadow-sm",
+                      user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary-container/30 dark:text-primary-fixed dark:border-primary/30" : 
+                      user.role === 'moderator' ? "bg-secondary/10 text-secondary border-secondary/20 dark:bg-secondary-container/30 dark:text-secondary-fixed dark:border-secondary/30" : 
+                      user.role === 'viewer' ? "bg-tertiary/10 text-tertiary border-tertiary/20 dark:bg-tertiary-container/30 dark:text-tertiary-fixed dark:border-tertiary/30" :
+                      "bg-surface-variant/40 text-on-surface-variant border-outline-variant/20 dark:bg-surface-variant/10 dark:text-on-surface-variant dark:border-outline-variant/20"
                     )}>
                       {user.role === 'admin' ? 'Admin' : user.role === 'moderator' ? 'Moderator' : user.role === 'viewer' ? 'Viewer' : 'User'}
                     </span>
@@ -337,19 +337,19 @@ export function Users() {
                   </td>
                   <td className="py-4 px-6">
                     {user.status === 'active' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-label text-xs border border-secondary-container/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-secondary-container"></span>
+                      <span className="status-badge badge-resolved">
+                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                         Hoạt động
                       </span>
                     )}
                     {user.status === 'banned' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error/10 text-error font-label text-xs border border-error/20">
+                      <span className="status-badge badge-rejected">
                         <Lock className="w-3.5 h-3.5" />
                         Bị khóa
                       </span>
                     )}
                     {user.status === 'warned' && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 text-tertiary-container font-label text-xs border border-tertiary/30">
+                      <span className="status-badge badge-pending">
                         <AlertTriangle className="w-3.5 h-3.5" />
                         Cảnh cáo
                       </span>
@@ -359,7 +359,7 @@ export function Users() {
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button 
                         onClick={() => openUserModal(user)}
-                        className="p-1.5 text-on-surface-variant hover:text-secondary-container hover:bg-secondary-container/10 rounded transition-colors" 
+                        className="p-1.5 text-on-surface-variant hover:text-secondary hover:bg-secondary/10 rounded transition-colors" 
                         title="Xem chi tiết"
                       >
                         <Eye className="w-5 h-5" />
@@ -370,7 +370,7 @@ export function Users() {
                           {user.status === 'banned' ? (
                             <button 
                               onClick={() => handleUpdateStatus(user.userId, 'active')}
-                              className="p-1.5 text-on-surface-variant hover:text-secondary-container hover:bg-secondary-container/10 rounded transition-colors" 
+                              className="p-1.5 text-on-surface-variant hover:text-secondary hover:bg-secondary/10 rounded transition-colors" 
                               title="Mở khóa"
                             >
                               <Unlock className="w-5 h-5" />

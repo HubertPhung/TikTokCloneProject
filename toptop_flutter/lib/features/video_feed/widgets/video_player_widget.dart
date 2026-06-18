@@ -26,10 +26,13 @@ class FloatingHeart {
 /// cử chỉ tap/double-tap, và phát tự động qua VisibilityDetector.
 class VideoPlayerWidget extends ConsumerStatefulWidget {
   final VideoModel video;
+  /// Nếu true, tự khởi tạo và phát ngay khi widget mount (dùng cho SingleVideoScreen)
+  final bool autoPlay;
 
   const VideoPlayerWidget({
     super.key,
     required this.video,
+    this.autoPlay = false,
   });
 
   @override
@@ -38,7 +41,7 @@ class VideoPlayerWidget extends ConsumerStatefulWidget {
 
 class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
     with SingleTickerProviderStateMixin {
-  late VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   bool _isVisible = false;
   bool _hasLoggedWatch = false;
   final List<FloatingHeart> _hearts = [];
@@ -46,22 +49,31 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
   @override
   void initState() {
     super.initState();
-    _initController();
+    // Nếu autoPlay=true, khởi tạo và phát ngay (dùng cho SingleVideoScreen)
+    if (widget.autoPlay) {
+      _isVisible = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _initController();
+      });
+    }
+    // Ngược lại, không khởi tạo ngay để tiết kiệm tài nguyên khi cuộn nhanh
   }
 
   void _initController() {
+    if (_controller != null) return;
+
     _controller = VideoPlayerController.networkUrl(
       Uri.parse(widget.video.videoUri),
     );
-    _controller.initialize().then((_) {
+    _controller!.initialize().then((_) {
       if (mounted) {
-        _controller.setLooping(true);
+        _controller!.setLooping(true);
         // Đồng bộ âm lượng ban đầu với mute state
         final isMuted = ref.read(videoMuteProvider);
-        _controller.setVolume(isMuted ? 0 : 1);
+        _controller!.setVolume(isMuted ? 0 : 1);
         
         if (_isVisible) {
-          _controller.play();
+          _controller!.play();
           _trackWatch();
         }
         setState(() {});
@@ -69,9 +81,17 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
     });
   }
 
+  void _disposeController() {
+    if (_controller != null) {
+      _controller!.dispose();
+      _controller = null;
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -107,12 +127,12 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
   }
 
   void _handleTap() {
-    if (!_controller.value.isInitialized) return;
+    if (_controller == null || !_controller!.value.isInitialized) return;
     setState(() {
-      if (_controller.value.isPlaying) {
-        _controller.pause();
+      if (_controller!.value.isPlaying) {
+        _controller!.pause();
       } else {
-        _controller.play();
+        _controller!.play();
       }
     });
   }
@@ -171,27 +191,40 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
   Widget build(BuildContext context) {
     // Lắng nghe trạng thái tắt âm toàn cục
     final isMuted = ref.watch(videoMuteProvider);
-    if (_controller.value.isInitialized) {
-      _controller.setVolume(isMuted ? 0 : 1);
+    if (_controller != null && _controller!.value.isInitialized) {
+      _controller!.setVolume(isMuted ? 0 : 1);
     }
+
+    final hasController = _controller != null && _controller!.value.isInitialized;
 
     return VisibilityDetector(
       key: Key('video_vis_${widget.video.videoId}'),
       onVisibilityChanged: (info) {
         if (!mounted) return;
+
+        // Bỏ qua VisibilityDetector nếu đang ở chế độ autoPlay (SingleVideoScreen)
+        if (widget.autoPlay) return;
+
         final visible = info.visibleFraction > 0.5;
         if (visible != _isVisible) {
           _isVisible = visible;
           if (_isVisible) {
-            if (_controller.value.isInitialized) {
-              _controller.play();
+            if (_controller == null) {
+              _initController();
+            } else if (_controller!.value.isInitialized) {
+              _controller!.play();
               _trackWatch();
             }
           } else {
-            if (_controller.value.isInitialized) {
-              _controller.pause();
+            if (_controller != null && _controller!.value.isInitialized) {
+              _controller!.pause();
             }
           }
+        }
+
+        // Tối ưu giải phóng RAM: Khi video hoàn toàn khuất màn hình
+        if (info.visibleFraction == 0.0) {
+          _disposeController();
         }
       },
       child: Stack(
@@ -201,15 +234,11 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
           GestureDetector(
             onTap: _handleTap,
             onDoubleTapDown: (details) => _handleDoubleTap(details.localPosition),
-            child: _controller.value.isInitialized
-                ? SizedBox.expand(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      child: SizedBox(
-                        width: _controller.value.size.width,
-                        height: _controller.value.size.height,
-                        child: VideoPlayer(_controller),
-                      ),
+            child: hasController
+                ? Center(
+                    child: AspectRatio(
+                      aspectRatio: _controller!.value.aspectRatio,
+                      child: VideoPlayer(_controller!),
                     ),
                   )
                 : Container(
@@ -223,7 +252,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
           ),
 
           // Hiển thị icon Pause ở giữa màn hình nếu đang tạm dừng thủ công
-          if (_controller.value.isInitialized && !_controller.value.isPlaying)
+          if (hasController && !_controller!.value.isPlaying)
             Align(
               alignment: Alignment.center,
               child: Container(
@@ -241,7 +270,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
             ),
 
           // Hiển thị vòng xoay tải nếu video đang buffer
-          if (_controller.value.isInitialized && _controller.value.isBuffering)
+          if (hasController && _controller!.value.isBuffering)
             const Align(
               alignment: Alignment.center,
               child: CircularProgressIndicator(
@@ -250,13 +279,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
             ),
 
           // Thanh tiến trình phát ở cuối video
-          if (_controller.value.isInitialized)
+          if (hasController)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: VideoProgressIndicator(
-                _controller,
+                _controller!,
                 allowScrubbing: true,
                 colors: const VideoProgressColors(
                   playedColor: Colors.white70,

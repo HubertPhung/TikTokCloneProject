@@ -46,6 +46,9 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Vui lòng nhập tên người dùng';
     }
+    if (value.length > 50) {
+      return 'Tên người dùng không được vượt quá 50 ký tự';
+    }
     if (!_usernameRegex.hasMatch(value)) {
       return 'Tên người dùng phải bắt đầu bằng chữ cái hoặc _, tối thiểu 3 ký tự';
     }

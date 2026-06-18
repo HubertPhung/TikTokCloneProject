@@ -4,7 +4,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../constants/app_constants.dart';
+
 
 /// Provider cho FirebaseAuth instance
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
@@ -18,10 +18,7 @@ final firestoreProvider = Provider<FirebaseFirestore>((ref) {
 
 /// Provider cho Firebase Realtime Database instance
 final realtimeDbProvider = Provider<FirebaseDatabase>((ref) {
-  return FirebaseDatabase.instanceFor(
-    app: FirebaseDatabase.instance.app,
-    databaseURL: AppConstants.rtdbUrl,
-  );
+  return FirebaseDatabase.instance;
 });
 
 /// Provider cho Firebase Storage instance

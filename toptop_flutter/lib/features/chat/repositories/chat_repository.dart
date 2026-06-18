@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/constants/app_constants.dart';
 import '../models/chat_message_model.dart';
 import '../models/notification_model.dart';
@@ -23,70 +24,100 @@ class ChatRepository {
     return (id1.compareTo(id2) < 0) ? '${id1}_$id2' : '${id2}_$id1';
   }
 
-  /// Gửi tin nhắn và cập nhật danh sách chat + thông báo
+  /// Gửi tin nhắn với type và metadata tùy chọn
   Future<void> sendMessage({
     required String senderId,
     required String receiverId,
     required String message,
+    String type = 'text',
+    Map<String, dynamic>? metadata,
   }) async {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final roomId = getRoomId(senderId, receiverId);
+    try {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final roomId = getRoomId(senderId, receiverId);
 
-    // 1. Đẩy tin nhắn vào node Chats/{roomId}
-    final messagesRef = _database.ref('Chats').child(roomId);
-    final msgKey = messagesRef.push().key;
-    if (msgKey == null) return;
+      // 1. Đẩy tin nhắn vào node Chats/{roomId}
+      final messagesRef = _database.ref('Chats').child(roomId);
+      final msgKey = messagesRef.push().key;
+      if (msgKey == null) return;
 
-    final chatMessage = ChatMessageModel(
+      final Map<String, dynamic> msgData = {
+        'senderId': senderId,
+        'receiverId': receiverId,
+        'message': message,
+        'timestamp': timestamp,
+        'type': type,
+        'metadata': ?metadata,
+      };
+
+      // Chuẩn bị cập nhật đa điểm (multi-path updates)
+      final Map<String, dynamic> updates = {};
+
+      // Ghi tin nhắn
+      updates['/Chats/$roomId/$msgKey'] = msgData;
+
+      // Cập nhật ChatList cho người gửi
+      updates['/ChatList/$senderId/$receiverId'] = {
+        'id': receiverId,
+        'lastMessage': message,
+        'lastMessageType': type,
+        'timestamp': timestamp,
+      };
+
+      // Cập nhật ChatList cho người nhận
+      updates['/ChatList/$receiverId/$senderId'] = {
+        'id': senderId,
+        'lastMessage': message,
+        'lastMessageType': type,
+        'timestamp': timestamp,
+      };
+
+      // Thực hiện cập nhật đồng thời
+      await _database.ref().update(updates);
+
+      // 2. Gửi thông báo đến người nhận
+      try {
+        final doc = await _firestore.collection(AppConstants.profilesCollection).doc(senderId).get();
+        final senderUsername = doc.exists ? (doc.data()?['username'] as String? ?? 'Ai đó') : 'Ai đó';
+
+        final notifRef = _database.ref('Notifications').child(receiverId).push();
+        await notifRef.set({
+          'fromUsername': senderUsername,
+          'action': AppConstants.actionChat,
+          'timestamp': timestamp,
+        });
+      } catch (_) {
+        // Bỏ qua lỗi thông báo để không ngắt luồng gửi tin nhắn
+      }
+    } catch (e) {
+      debugPrint("Firebase Database send message error: $e");
+    }
+  }
+
+  /// Gửi tin nhắn chia sẻ video (type: video_share) với metadata đầy đủ
+  Future<void> sendVideoShare({
+    required String senderId,
+    required String receiverId,
+    required String videoId,
+    Map<String, dynamic>? videoMeta,
+  }) async {
+    await sendMessage(
       senderId: senderId,
       receiverId: receiverId,
-      message: message,
-      timestamp: timestamp,
-      type: 'text',
+      message: 'Đã chia sẻ một video',
+      type: 'video_share',
+      metadata: {
+        'videoId': videoId,
+        ...?videoMeta,
+      },
     );
-
-    // Chuẩn bị cập nhật đa điểm (multi-path updates)
-    final Map<String, Map<String, dynamic>> updates = {};
-
-    // Ghi tin nhắn
-    updates['/Chats/$roomId/$msgKey'] = chatMessage.toMap();
-
-    // Cập nhật ChatList cho người gửi
-    updates['/ChatList/$senderId/$receiverId'] = {
-      'id': receiverId,
-      'lastMessage': message,
-      'timestamp': timestamp,
-    };
-
-    // Cập nhật ChatList cho người nhận
-    updates['/ChatList/$receiverId/$senderId'] = {
-      'id': senderId,
-      'lastMessage': message,
-      'timestamp': timestamp,
-    };
-
-    // Thực hiện cập nhật đồng thời
-    await _database.ref().update(updates);
-
-    // 2. Gửi thông báo đến người nhận thông qua node Notifications/{receiverId}
-    // Lấy username của người gửi từ Firestore
-    try {
-      final doc = await _firestore.collection(AppConstants.profilesCollection).doc(senderId).get();
-      final senderUsername = doc.exists ? (doc.data()?['username'] as String? ?? 'Ai đó') : 'Ai đó';
-
-      final notifRef = _database.ref('Notifications').child(receiverId).push();
-      await notifRef.set({
-        'fromUsername': senderUsername,
-        'action': AppConstants.actionChat,
-        'timestamp': timestamp,
-      });
-    } catch (_) {
-      // Bỏ qua lỗi thông báo để không ngắt luồng gửi tin nhắn
-    }
   }
 
   /// Stream danh sách tin nhắn trong một cuộc trò chuyện
   Stream<List<ChatMessageModel>> watchMessages(String roomId) {
+    if (roomId.trim().isEmpty) {
+      return Stream.value([]);
+    }
     return _database.ref('Chats').child(roomId).onValue.map((event) {
       final snapshot = event.snapshot;
       if (!snapshot.exists || snapshot.value == null) {
@@ -94,13 +125,16 @@ class ChatRepository {
       }
 
       final List<ChatMessageModel> messages = [];
-      final data = snapshot.value as Map<dynamic, dynamic>;
-
-      data.forEach((key, val) {
-        if (val is Map) {
-          messages.add(ChatMessageModel.fromMap(val));
-        }
-      });
+      try {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((key, val) {
+          if (val is Map) {
+            messages.add(ChatMessageModel.fromMap(val, id: key.toString()));
+          }
+        });
+      } catch (e) {
+        debugPrint("Error parsing messages: $e");
+      }
 
       // Sắp xếp theo timestamp tăng dần để hiển thị từ cũ đến mới
       messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -110,6 +144,9 @@ class ChatRepository {
 
   /// Stream danh sách cuộc trò chuyện của một user từ Realtime Database
   Stream<List<Map<String, dynamic>>> watchChatList(String userId) {
+    if (userId.trim().isEmpty) {
+      return Stream.value([]);
+    }
     return _database.ref('ChatList').child(userId).onValue.map((event) {
       final snapshot = event.snapshot;
       if (!snapshot.exists || snapshot.value == null) {
@@ -117,18 +154,25 @@ class ChatRepository {
       }
 
       final List<Map<String, dynamic>> list = [];
-      final data = snapshot.value as Map<dynamic, dynamic>;
+      try {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((key, val) {
+          if (val is Map) {
+            final timestampVal = val['timestamp'] ?? val['lastTimestamp'] ?? 0;
+            final int timestamp = timestampVal is num 
+                ? timestampVal.toInt() 
+                : (int.tryParse(timestampVal.toString()) ?? 0);
 
-      data.forEach((key, val) {
-        if (val is Map) {
-          final timestamp = val['timestamp'] ?? val['lastTimestamp'] ?? 0;
-          list.add({
-            'userId': key as String,
-            'lastMessage': val['lastMessage'] as String? ?? '',
-            'timestamp': (timestamp as num).toInt(),
-          });
-        }
-      });
+            list.add({
+              'userId': key.toString(),
+              'lastMessage': val['lastMessage'] as String? ?? '',
+              'timestamp': timestamp,
+            });
+          }
+        });
+      } catch (e) {
+        debugPrint("Error parsing chat list: $e");
+      }
 
       // Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên đầu
       list.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
@@ -138,47 +182,73 @@ class ChatRepository {
 
   /// Cập nhật trạng thái hoạt động (presence) của user hiện tại
   Future<void> updatePresence(String userId, bool online) async {
-    final statusRef = _database.ref('status').child(userId);
+    if (userId.trim().isEmpty) return;
+    try {
+      final statusRef = _database.ref('status').child(userId);
 
-    final Map<String, dynamic> offlineStatus = {
-      'online': false,
-      'lastActive': ServerValue.timestamp,
-    };
-
-    if (online) {
-      final Map<String, dynamic> onlineStatus = {
-        'online': true,
+      final Map<String, dynamic> offlineStatus = {
+        'online': false,
         'lastActive': ServerValue.timestamp,
       };
 
-      // Tự động set offline khi ngắt kết nối
-      await statusRef.onDisconnect().set(offlineStatus);
-      await statusRef.set(onlineStatus);
-    } else {
-      await statusRef.set(offlineStatus);
+      if (online) {
+        final Map<String, dynamic> onlineStatus = {
+          'online': true,
+          'lastActive': ServerValue.timestamp,
+        };
+
+        // Tự động set offline khi ngắt kết nối
+        await statusRef.onDisconnect().set(offlineStatus);
+        await statusRef.set(onlineStatus);
+      } else {
+        await statusRef.set(offlineStatus);
+      }
+    } catch (e) {
+      // Log lỗi và bỏ qua để tránh gây crash app khi Firebase chưa được cấp quyền đầy đủ
+      debugPrint("Firebase Database presence error: $e");
     }
   }
 
   /// Khởi tạo listener tự động đồng bộ kết nối mạng
   void setupPresenceAutomation(String userId) {
+    if (userId.trim().isEmpty) return;
     // Theo dõi trạng thái kết nối mạng của Firebase
-    _database.ref('.info/connected').onValue.listen((event) {
-      final connected = event.snapshot.value as bool? ?? false;
-      if (connected) {
-        updatePresence(userId, true);
-      }
-    });
+    _database.ref('.info/connected').onValue.listen(
+      (event) {
+        try {
+          final connected = event.snapshot.value as bool? ?? false;
+          if (connected) {
+            updatePresence(userId, true);
+          }
+        } catch (e) {
+          debugPrint("Error in presence connection listener: $e");
+        }
+      },
+      onError: (e) {
+        debugPrint("Presence connection stream error: $e");
+      },
+    );
   }
 
   /// Stream kiểm tra online status của một user cụ thể
   Stream<bool> watchUserOnlineStatus(String userId) {
+    if (userId.trim().isEmpty) {
+      return Stream.value(false);
+    }
     return _database.ref('status').child(userId).child('online').onValue.map((event) {
-      return event.snapshot.value as bool? ?? false;
+      final val = event.snapshot.value;
+      if (val is bool) return val;
+      if (val is String) return val.toLowerCase() == 'true';
+      if (val is num) return val == 1;
+      return false;
     });
   }
 
   /// Stream danh sách thông báo của user từ Realtime Database
   Stream<List<NotificationModel>> watchNotifications(String userId) {
+    if (userId.trim().isEmpty) {
+      return Stream.value([]);
+    }
     return _database.ref('Notifications').child(userId).onValue.map((event) {
       final snapshot = event.snapshot;
       if (!snapshot.exists || snapshot.value == null) {
@@ -186,17 +256,96 @@ class ChatRepository {
       }
 
       final List<NotificationModel> list = [];
-      final data = snapshot.value as Map<dynamic, dynamic>;
-
-      data.forEach((key, val) {
-        if (val is Map) {
-          list.add(NotificationModel.fromMap(val, id: key as String));
-        }
-      });
+      try {
+        final data = snapshot.value as Map<dynamic, dynamic>;
+        data.forEach((key, val) {
+          if (val is Map) {
+            list.add(NotificationModel.fromMap(val, id: key.toString()));
+          }
+        });
+      } catch (e) {
+        debugPrint("Error parsing notifications: $e");
+      }
 
       // Sắp xếp thông báo mới nhất lên đầu
       list.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       return list;
     });
+  }
+
+  // ============================================================
+  // TYPING INDICATOR
+  // ============================================================
+
+  /// Cập nhật trạng thái đang nhập của user trong room
+  Future<void> setTyping({
+    required String roomId,
+    required String userId,
+    required bool isTyping,
+  }) async {
+    try {
+      final ref = _database.ref('typing/$roomId/$userId');
+      if (isTyping) {
+        await ref.set({
+          'isTyping': true,
+          'timestamp': ServerValue.timestamp,
+        });
+      } else {
+        await ref.remove();
+      }
+    } catch (e) {
+      debugPrint('setTyping error: $e');
+    }
+  }
+
+  /// Stream theo dõi trạng thái đang nhập của người khác trong room
+  Stream<bool> watchTyping(String roomId, String otherUserId) {
+    if (roomId.isEmpty || otherUserId.isEmpty) return Stream.value(false);
+    return _database
+        .ref('typing/$roomId/$otherUserId/isTyping')
+        .onValue
+        .map((event) {
+      final val = event.snapshot.value;
+      if (val is bool) return val;
+      if (val is String) return val.toLowerCase() == 'true';
+      if (val is num) return val != 0;
+      return false;
+    });
+  }
+
+  // ============================================================
+  // READ RECEIPT (SEEN STATUS)
+  // ============================================================
+
+  /// Đánh dấu đã xem tất cả tin nhắn từ người khác trong room
+  Future<void> markMessagesAsSeen({
+    required String roomId,
+    required String viewerId,
+    required String otherUserId,
+  }) async {
+    try {
+      final snap = await _database.ref('Chats/$roomId').once();
+      if (!snap.snapshot.exists || snap.snapshot.value == null) return;
+
+      final data = snap.snapshot.value as Map<dynamic, dynamic>;
+      final Map<String, dynamic> updates = {};
+
+      data.forEach((key, val) {
+        if (val is Map) {
+          final senderId = val['senderId'] as String? ?? '';
+          final seenBy = val['seenBy'] as Map? ?? {};
+          // Chỉ đánh dấu tin nhắn từ người khác, chưa được đọc
+          if (senderId == otherUserId && !seenBy.containsKey(viewerId)) {
+            updates['Chats/$roomId/$key/seenBy/$viewerId'] = ServerValue.timestamp;
+          }
+        }
+      });
+
+      if (updates.isNotEmpty) {
+        await _database.ref().update(updates);
+      }
+    } catch (e) {
+      debugPrint('markMessagesAsSeen error: $e');
+    }
   }
 }

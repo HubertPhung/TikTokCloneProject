@@ -3,26 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:toptop_flutter/features/auth/providers/auth_provider.dart';
-import 'package:toptop_flutter/features/auth/screens/auth_choice_screen.dart';
-import 'package:toptop_flutter/features/auth/screens/login_screen.dart';
-import 'package:toptop_flutter/features/auth/screens/signup_screen.dart';
-import 'package:toptop_flutter/features/auth/screens/splash_screen.dart';
-import 'package:toptop_flutter/features/chat/screens/inbox_screen.dart';
-import 'package:toptop_flutter/features/chat/screens/chat_screen.dart';
-import 'package:toptop_flutter/features/chat/screens/notifications_screen.dart';
-import 'package:toptop_flutter/features/profile/screens/profile_screen.dart';
-import 'package:toptop_flutter/features/profile/screens/edit_profile_screen.dart';
-import 'package:toptop_flutter/features/profile/screens/edit_field_screen.dart';
-import 'package:toptop_flutter/features/profile/screens/follow_list_screen.dart';
-import 'package:toptop_flutter/features/settings/screens/settings_screen.dart';
-import 'package:toptop_flutter/features/settings/screens/account_settings_screen.dart';
-import 'package:toptop_flutter/features/settings/screens/change_password_screen.dart';
-import 'package:toptop_flutter/features/settings/screens/delete_account_screen.dart';
-import 'package:toptop_flutter/features/search/screens/search_screen.dart';
-import 'package:toptop_flutter/features/video_feed/screens/video_feed_screen.dart';
-import 'package:toptop_flutter/features/video_feed/screens/single_video_screen.dart';
-import 'package:toptop_flutter/features/video_upload/screens/camera_screen.dart';
-import 'package:toptop_flutter/features/video_upload/screens/video_description_screen.dart';
+import 'package:toptop_flutter/features/auth/layouts/auth_choice_screen.dart';
+import 'package:toptop_flutter/features/auth/layouts/login_screen.dart';
+import 'package:toptop_flutter/features/auth/layouts/signup_screen.dart';
+import 'package:toptop_flutter/features/auth/layouts/splash_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/inbox_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/chat_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/notifications_screen.dart';
+import 'package:toptop_flutter/features/profile/layouts/profile_screen.dart';
+import 'package:toptop_flutter/features/profile/layouts/edit_profile_screen.dart';
+import 'package:toptop_flutter/features/profile/layouts/edit_field_screen.dart';
+import 'package:toptop_flutter/features/profile/layouts/follow_list_screen.dart';
+import 'package:toptop_flutter/features/settings/layouts/settings_screen.dart';
+import 'package:toptop_flutter/features/settings/layouts/account_settings_screen.dart';
+import 'package:toptop_flutter/features/settings/layouts/change_password_screen.dart';
+import 'package:toptop_flutter/features/settings/layouts/delete_account_screen.dart';
+import 'package:toptop_flutter/features/settings/layouts/appearance_screen.dart';
+import 'package:toptop_flutter/features/search/layouts/search_screen.dart';
+import 'package:toptop_flutter/features/video_feed/layouts/video_feed_screen.dart';
+import 'package:toptop_flutter/features/video_feed/layouts/single_video_screen.dart';
+import 'package:toptop_flutter/features/video_upload/layouts/camera_screen.dart';
+import 'package:toptop_flutter/features/video_upload/layouts/video_description_screen.dart';
 import 'package:toptop_flutter/shared/widgets/bottom_nav_shell.dart';
 
 /// Cấu hình GoRouter cho toàn bộ ứng dụng
@@ -70,7 +71,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Nếu chưa đăng nhập và đang ở trang cần auth
       final isAuthRoute = currentPath.startsWith('/auth');
-      if (!isLoggedIn && !isAuthRoute) {
+      
+      // Danh sách các route được phép truy cập khi chưa đăng nhập (Khách)
+      final isAllowedGuestRoute = isAuthRoute ||
+          currentPath == '/home' ||
+          currentPath == '/search' ||
+          currentPath.startsWith('/video/') ||
+          currentPath.startsWith('/user/');
+
+      if (!isLoggedIn && !isAllowedGuestRoute) {
         return '/auth';
       }
 
@@ -191,7 +200,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/video/:videoId',
         builder: (context, state) {
           final videoId = state.pathParameters['videoId'] ?? '';
-          return SingleVideoScreen(videoId: videoId);
+          final showComments = state.uri.queryParameters['showComments'] == 'true';
+          return SingleVideoScreen(
+            videoId: videoId,
+            showComments: showComments,
+          );
         },
       ),
 
@@ -306,6 +319,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => buildSlidePage(
               key: state.pageKey,
               child: const DeleteAccountScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'appearance',
+            pageBuilder: (context, state) => buildSlidePage(
+              key: state.pageKey,
+              child: const AppearanceScreen(),
             ),
           ),
         ],

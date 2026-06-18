@@ -49,14 +49,20 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
               <p className="text-on-surface-variant font-label text-sm mt-1">ID: {user.userId}</p>
               <div className="flex items-center gap-3 mt-3">
                 <span className={clsx(
-                  "px-3 py-1 rounded-full text-xs font-label border",
-                  user.status === 'active' ? "bg-secondary-container/10 text-secondary-container border-secondary-container/20" :
-                  user.status === 'banned' ? "bg-error/10 text-error border-error/20" :
-                  "bg-tertiary-container/10 text-tertiary-container border-tertiary-container/20"
+                  "status-badge cursor-default",
+                  user.status === 'active' ? "badge-resolved" :
+                  user.status === 'banned' ? "badge-rejected" :
+                  "badge-pending"
                 )}>
                   {user.status === 'active' ? 'Hoạt động' : user.status === 'banned' ? 'Bị khóa' : 'Cảnh cáo'}
                 </span>
-                <span className="px-3 py-1 rounded-full text-xs font-label border bg-primary/10 text-primary border-primary/20">
+                <span className={clsx(
+                  "px-3 py-1 rounded-full text-xs font-label border font-semibold shadow-sm",
+                  user.role === 'admin' ? "bg-primary/10 text-primary border-primary/20 dark:bg-primary-container/30 dark:text-primary-fixed dark:border-primary/30" : 
+                  user.role === 'moderator' ? "bg-secondary/10 text-secondary border-secondary/20 dark:bg-secondary-container/30 dark:text-secondary-fixed dark:border-secondary/30" : 
+                  user.role === 'viewer' ? "bg-tertiary/10 text-tertiary border-tertiary/20 dark:bg-tertiary-container/30 dark:text-tertiary-fixed dark:border-tertiary/30" :
+                  "bg-surface-variant/40 text-on-surface-variant border-outline-variant/20 dark:bg-surface-variant/10 dark:text-on-surface-variant dark:border-outline-variant/20"
+                )}>
                   {user.role === 'admin' ? 'Quản trị viên' : user.role === 'moderator' ? 'Kiểm duyệt viên' : user.role === 'viewer' ? 'Xem báo cáo' : 'Người dùng'}
                 </span>
               </div>
@@ -71,7 +77,7 @@ export function UserModal({ user, isOpen, onClose, onUpdateStatus, onUpdateRole 
               <div className="text-xs text-on-surface-variant font-label mt-1">Người theo dõi</div>
             </div>
             <div className="bg-surface-low p-4 rounded-xl border border-outline-variant/10 text-center">
-              <UserIcon className="w-6 h-6 text-secondary-container mx-auto mb-2" />
+              <UserIcon className="w-6 h-6 text-secondary mx-auto mb-2" />
               <div className="text-2xl font-bold text-on-surface">{user.following.toLocaleString()}</div>
               <div className="text-xs text-on-surface-variant font-label mt-1">Đang theo dõi</div>
             </div>

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../chat/providers/chat_provider.dart';
 import '../models/video_model.dart';
 import '../providers/video_provider.dart';
 import '../../comments/widgets/comment_bottom_sheet.dart';
@@ -25,7 +26,7 @@ class VideoActionBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Positioned(
       right: 12,
-      bottom: 60,
+      bottom: 50,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -90,25 +91,62 @@ class VideoActionBar extends ConsumerWidget {
                                 ),
                         ),
                       ),
-                      // Nút Follow mini giống TikTok
-                      if (currentUser == null || currentUser.uid != video.authorId)
-                        Positioned(
-                          bottom: -6,
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: const BoxDecoration(
-                              color: AppTheme.primaryColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 14,
+                      // Nút Follow mini giống TikTok - bấm được, biến mất khi đã follow
+                      if (currentUser?.uid != video.authorId)
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final isFollowing = currentUser != null
+                                ? ref.watch(followStatusStreamProvider('${currentUser.uid}_${video.authorId}')).valueOrNull ?? false
+                                : false;
+
+                            if (isFollowing) return const SizedBox.shrink();
+
+                            return Positioned(
+                              bottom: -6,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  HapticFeedback.lightImpact();
+                                  if (currentUser == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Vui lòng đăng nhập để theo dõi người dùng!')),
+                                    );
+                                    context.go('/auth');
+                                    return;
+                                  }
+
+                                  final myProfile = ref.read(currentUserProfileProvider).valueOrNull;
+                                  final myUsername = myProfile?.username ?? currentUser.email?.split('@')[0] ?? '';
+
+                                  await ref.read(profileRepositoryProvider).followUser(
+                                        currentUid: currentUser.uid,
+                                        targetUid: video.authorId,
+                                        currentUsername: myUsername,
+                                      );
+
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Đã theo dõi @${authorProfile?.username ?? video.username}')),
+                                    );
+                                  }
+                                },
+                                child: Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: const BoxDecoration(
+                                    color: AppTheme.primaryColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         ),
                     ],
                   ),
@@ -365,10 +403,8 @@ class VideoActionBar extends ConsumerWidget {
                       label: 'Gửi tin nhắn',
                       color: Colors.blue,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Sẽ hỗ trợ trong tương lai.')),
-                        );
-                        Navigator.pop(context);
+                        Navigator.pop(context); // Đóng share sheet
+                        _showSendToChatSheet(context, ref, video);
                       },
                     ),
                     if (isOwner) ...[
@@ -396,6 +432,151 @@ class VideoActionBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Bottom sheet chọn người nhận để gửi video share
+  void _showSendToChatSheet(BuildContext context, WidgetRef ref, VideoModel video) {
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null) {
+      context.go('/auth');
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1D1D1F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        // Lấy danh sách cuộc trò chuyện gần đây
+        final conversations = ref.read(chatConversationsProvider).valueOrNull ?? [];
+
+        if (conversations.isEmpty) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.chat_bubble_outline,
+                      color: Colors.white38, size: 40),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Chưa có cuộc trò chuyện nào.',
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Hãy theo dõi và nhắn tin với ai đó trước.',
+                    style: TextStyle(
+                        color: Colors.white38, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              const Text(
+                'Gửi video tới...',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: conversations.take(6).length,
+                itemBuilder: (_, i) {
+                  final conv = conversations[i];
+                  final userId = conv['userId'] as String;
+                  final profileAsync = ref.read(
+                      userProfileStreamProvider(userId).future);
+
+                  return FutureBuilder(
+                    future: profileAsync,
+                    builder: (context, snap) {
+                      final profile = snap.data;
+                      final username =
+                          profile?.username ?? userId.substring(0, 8);
+                      final avatar = profile?.avatarUrl ?? '';
+
+                      return ListTile(
+                        leading: CircleAvatar(
+                          radius: 22,
+                          backgroundColor: Colors.grey[800],
+                          backgroundImage: avatar.isNotEmpty
+                              ? NetworkImage(avatar)
+                              : null,
+                          child: avatar.isEmpty
+                              ? const Icon(Icons.person,
+                                  color: Colors.white, size: 22)
+                              : null,
+                        ),
+                        title: Text(
+                          '@$username',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500),
+                        ),
+                        trailing: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            // Gửi video_share message
+                            await ref
+                                .read(chatRepositoryProvider)
+                                .sendVideoShare(
+                                  senderId: currentUser.uid,
+                                  receiverId: userId,
+                                  videoId: video.videoId,
+                                );
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Đã gửi video thành công!'),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Gửi',
+                              style: TextStyle(fontSize: 13)),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         );

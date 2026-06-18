@@ -1,13 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../features/auth/providers/auth_provider.dart';
 
 /// Shell widget chứa BottomNavigationBar premium cho 5 tab chính
 /// Port từ HomeScreenActivity.java — nâng cấp TikTok premium style
-class BottomNavShell extends StatelessWidget {
+class BottomNavShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const BottomNavShell({
@@ -16,7 +18,8 @@ class BottomNavShell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUser = ref.watch(currentUserProvider);
     // Map UI index (0-4) → branch index (0-3, bỏ qua Add button ở giữa)
     final currentBranch = navigationShell.currentIndex;
     // Tính UI index từ branch index
@@ -24,7 +27,7 @@ class BottomNavShell extends StatelessWidget {
 
     return Scaffold(
       body: navigationShell,
-      extendBody: true,
+      extendBody: false,
       bottomNavigationBar: ClipRRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -50,19 +53,26 @@ class BottomNavShell extends StatelessWidget {
                       activeIcon: Icons.home,
                       label: 'Trang chủ',
                       isActive: uiIndex == 0,
-                      onTap: () => _onTap(0),
+                      onTap: () => _onTap(context, ref, 0),
                     ),
                     _NavItem(
                       icon: Icons.search,
                       activeIcon: Icons.search,
                       label: 'Khám phá',
                       isActive: uiIndex == 1,
-                      onTap: () => _onTap(1),
+                      onTap: () => _onTap(context, ref, 1),
                     ),
                     // Nút Add Video ở giữa — Premium TikTok style
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
+                        if (currentUser == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Vui lòng đăng nhập để quay video!')),
+                          );
+                          context.go('/auth');
+                          return;
+                        }
                         context.push('/camera');
                       },
                       child: Container(
@@ -100,14 +110,14 @@ class BottomNavShell extends StatelessWidget {
                       activeIcon: Icons.inbox,
                       label: 'Hộp thư',
                       isActive: uiIndex == 3,
-                      onTap: () => _onTap(3),
+                      onTap: () => _onTap(context, ref, 3),
                     ),
                     _NavItem(
                       icon: Icons.person_outline,
                       activeIcon: Icons.person,
                       label: 'Hồ sơ',
                       isActive: uiIndex == 4,
-                      onTap: () => _onTap(4),
+                      onTap: () => _onTap(context, ref, 4),
                     ),
                   ],
                 ),
@@ -119,9 +129,20 @@ class BottomNavShell extends StatelessWidget {
     );
   }
 
-  void _onTap(int uiIndex) {
+  void _onTap(BuildContext context, WidgetRef ref, int uiIndex) {
     // Index 2 = nút Add Video → đã xử lý riêng
     if (uiIndex == 2) return;
+
+    final currentUser = ref.read(currentUserProvider);
+    if (currentUser == null && (uiIndex == 3 || uiIndex == 4)) {
+      final tabName = uiIndex == 3 ? 'hộp thư' : 'hồ sơ';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Vui lòng đăng nhập để truy cập $tabName!')),
+      );
+      context.go('/auth');
+      return;
+    }
+
     final branchIndex = uiIndex > 2 ? uiIndex - 1 : uiIndex;
     
     // Rung xúc giác khi chuyển tab

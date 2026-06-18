@@ -3,6 +3,7 @@ import {
   Users,
   ShieldCheck,
   BarChart,
+  Megaphone,
   Settings,
   LogOut,
   X,
@@ -27,6 +28,7 @@ export function Sidebar({ currentTab, onTabChange, mobileOpen, onMobileClose }: 
     { id: 'users', label: 'Người dùng', icon: Users },
     { id: 'moderation', label: 'Kiểm duyệt', icon: ShieldCheck, roles: ['admin', 'moderator'] },
     { id: 'reports', label: 'Báo cáo', icon: BarChart },
+    { id: 'ads', label: 'Quảng cáo', icon: Megaphone, roles: ['admin'] },
     { id: 'settings', label: 'Cài đặt', icon: Settings, roles: ['admin'] },
   ].filter(tab => !tab.roles || tab.roles.includes(role));
 

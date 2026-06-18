@@ -149,7 +149,13 @@ class _VideoOverlayState extends ConsumerState<VideoOverlay>
               Wrap(
                 spacing: 6,
                 runSpacing: 4,
-                children: widget.video.hashtags.take(5).map((tag) {
+                children: widget.video.hashtags
+                    .map((tag) => tag.trim())
+                    .where((tag) => tag.isNotEmpty)
+                    .map((tag) => tag.startsWith('#') ? tag.substring(1) : tag)
+                    .toSet() // Loại bỏ trùng lặp
+                    .take(5)
+                    .map((tag) {
                   return Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(

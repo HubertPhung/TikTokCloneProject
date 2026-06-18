@@ -7,11 +7,11 @@ import type { AuditLog } from '../types';
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   'BAN_USER': { label: 'Khóa User', color: 'text-error' },
-  'UNBAN_USER': { label: 'Mở khóa User', color: 'text-secondary-container' },
-  'APPROVE_VIDEO': { label: 'Duyệt Video', color: 'text-secondary-container' },
+  'UNBAN_USER': { label: 'Mở khóa User', color: 'text-secondary' },
+  'APPROVE_VIDEO': { label: 'Duyệt Video', color: 'text-secondary' },
   'REJECT_VIDEO': { label: 'Gỡ Video', color: 'text-error' },
   'CHANGE_ROLE': { label: 'Thay đổi Quyền', color: 'text-tertiary' },
-  'WARN_USER': { label: 'Cảnh cáo User', color: 'text-tertiary-container' },
+  'WARN_USER': { label: 'Cảnh cáo User', color: 'text-tertiary' },
 };
 
 const ACTION_ICONS: Record<string, typeof Lock> = {
@@ -114,10 +114,10 @@ export function Settings() {
 
   const getAdminColor = (adminId: string) => {
     const colors = [
-      'bg-primary-container/20 text-primary',
-      'bg-secondary-container/20 text-secondary-container',
-      'bg-tertiary-container/20 text-tertiary',
-      'bg-error-container/20 text-error',
+      'bg-primary/20 text-primary border border-primary/10',
+      'bg-secondary/20 text-secondary border border-secondary/10',
+      'bg-tertiary/20 text-tertiary border border-tertiary/10',
+      'bg-error/20 text-error border border-error/10',
     ];
     let hash = 0;
     for (let i = 0; i < adminId.length; i++) hash = adminId.charCodeAt(i) + ((hash << 5) - hash);

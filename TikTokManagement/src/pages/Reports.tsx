@@ -160,6 +160,7 @@ export function Reports() {
   const getTargetIcon = (type: string) => {
     switch (type) {
       case 'video': return Video;
+      case 'video_ad': return Flag;
       case 'user': return User;
       case 'comment': return MessageSquare;
       default: return Flag;
@@ -177,13 +178,13 @@ export function Reports() {
           </p>
         </div>
         <div className="flex items-center gap-4 text-sm font-label">
-          <span className="px-3 py-1 rounded-full bg-tertiary/10 text-tertiary-container border border-tertiary/20">
+          <span className="status-badge badge-pending cursor-default">
             ⏳ Chờ: {pendingCount}
           </span>
-          <span className="px-3 py-1 rounded-full bg-secondary-container/10 text-secondary-container border border-secondary-container/20">
+          <span className="status-badge badge-resolved cursor-default">
             ✅ Đã xử lý: {resolvedCount}
           </span>
-          <span className="px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant border border-outline-variant/20">
+          <span className="status-badge badge-dismissed cursor-default">
             ❌ Bỏ qua: {dismissedCount}
           </span>
         </div>
@@ -227,6 +228,7 @@ export function Reports() {
               >
                 <option value="all">Tất cả loại</option>
                 <option value="video">Video</option>
+                <option value="video_ad">Quảng cáo</option>
                 <option value="user">User</option>
                 <option value="comment">Comment</option>
               </select>
@@ -281,7 +283,7 @@ export function Reports() {
                       <div className="flex items-center gap-2">
                         <TargetIcon className="w-4 h-4 text-on-surface-variant" />
                         <span className="font-label text-xs uppercase">
-                          {report.targetType === 'video' ? 'Video' : report.targetType === 'user' ? 'User' : 'Comment'}
+                          {report.targetType === 'video' ? 'Video' : report.targetType === 'video_ad' ? 'Quảng cáo' : report.targetType === 'user' ? 'User' : 'Comment'}
                         </span>
                       </div>
                     </td>
@@ -309,19 +311,19 @@ export function Reports() {
                     </td>
                     <td className="py-4 px-6">
                       {report.status === 'pending' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-tertiary/10 text-tertiary-container font-label text-xs border border-tertiary/30">
-                          <span className="w-1.5 h-1.5 rounded-full bg-tertiary-container animate-pulse"></span>
+                        <span className="status-badge badge-pending">
+                          <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
                           Chờ xử lý
                         </span>
                       )}
                       {report.status === 'resolved' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/10 text-secondary-container font-label text-xs border border-secondary-container/20">
+                        <span className="status-badge badge-resolved">
                           <CheckCircle className="w-3.5 h-3.5" />
                           Đã xử lý
                         </span>
                       )}
                       {report.status === 'dismissed' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-variant text-on-surface-variant font-label text-xs border border-outline-variant/20">
+                        <span className="status-badge badge-dismissed">
                           <XCircle className="w-3.5 h-3.5" />
                           Đã bỏ qua
                         </span>
@@ -332,7 +334,7 @@ export function Reports() {
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleResolve(report)}
-                            className="p-1.5 text-on-surface-variant hover:text-secondary-container hover:bg-secondary-container/10 rounded transition-colors"
+                            className="p-1.5 text-on-surface-variant hover:text-secondary hover:bg-secondary/10 rounded transition-colors"
                             title="Xử lý và gỡ video"
                           >
                             <CheckCircle className="w-5 h-5" />

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/notification_model.dart';
@@ -204,6 +205,16 @@ class NotificationTile extends StatelessWidget {
           if (parts.length > 1) {
             _showAppealDialog(context, parts[1]);
           }
+        } else if (notification.action == AppConstants.actionLike &&
+            notification.videoId != null &&
+            notification.videoId!.isNotEmpty) {
+          // Khi ai đó tim video -> Mở video đó
+          context.push('/video/${notification.videoId}');
+        } else if (notification.action == AppConstants.actionComment &&
+            notification.videoId != null &&
+            notification.videoId!.isNotEmpty) {
+          // Khi ai đó bình luận video -> Mở video đó và tự động hiển thị comment sheet để reply
+          context.push('/video/${notification.videoId}?showComments=true');
         }
       },
       child: Container(

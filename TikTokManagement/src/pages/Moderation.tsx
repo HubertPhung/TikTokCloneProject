@@ -439,7 +439,7 @@ export function Moderation() {
                           </button>
                           <button
                             onClick={() => handleApprove(video.videoId)}
-                            className="py-2 rounded bg-secondary-container/20 text-secondary-container border border-secondary-container/30 hover:bg-secondary-container/30 font-label text-sm flex items-center justify-center gap-1.5 transition-colors"
+                            className="py-2 rounded bg-secondary/20 text-secondary border border-secondary/30 hover:bg-secondary/30 font-label text-sm flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <Check className="w-4 h-4" /> Duyệt
                           </button>
@@ -489,7 +489,7 @@ export function Moderation() {
                   {/* Actions for REJECTED - can restore */}
                   {activeTab === 'rejected' && (
                     <div className="mt-auto flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-error/10 text-error font-label text-xs border border-error/20">
+                      <span className="status-badge badge-rejected">
                         <X className="w-3.5 h-3.5" />
                         Đã gỡ bỏ
                       </span>
@@ -579,7 +579,7 @@ export function Moderation() {
                       handleApprove(playingVideo.videoId);
                       setPlayingVideo(null);
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-secondary-container/20 text-secondary-container hover:bg-secondary-container hover:text-on-secondary-container font-label text-sm rounded-lg transition-colors border border-secondary-container/30"
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-secondary/20 text-secondary hover:bg-secondary hover:text-on-secondary font-label text-sm rounded-lg transition-colors border border-secondary/30"
                   >
                     <Check className="w-4 h-4" /> Duyệt
                   </button>

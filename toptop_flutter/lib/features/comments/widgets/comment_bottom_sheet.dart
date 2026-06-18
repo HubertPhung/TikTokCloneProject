@@ -329,13 +329,21 @@ class _CommentBottomSheetState extends ConsumerState<CommentBottomSheet> {
                     const SizedBox(width: 8),
 
                     // Nút gửi
-                    IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: AppTheme.primaryColor,
-                        size: 24,
-                      ),
-                      onPressed: () => _sendComment(currentUser.uid, myUsername),
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _commentController,
+                      builder: (context, value, child) {
+                        final isEmpty = value.text.trim().isEmpty;
+                        return IconButton(
+                          icon: Icon(
+                            Icons.send,
+                            color: isEmpty ? Colors.grey : AppTheme.primaryColor,
+                            size: 24,
+                          ),
+                          onPressed: isEmpty
+                              ? null
+                              : () => _sendComment(currentUser.uid, myUsername),
+                        );
+                      },
                     ),
                   ],
                 ),

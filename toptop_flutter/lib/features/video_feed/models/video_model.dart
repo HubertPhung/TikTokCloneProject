@@ -35,9 +35,10 @@ class VideoModel {
     this.isCopyrightProtected = false,
   });
 
-  factory VideoModel.fromMap(Map<String, dynamic> map) {
+  factory VideoModel.fromMap(Map<String, dynamic> map, [String? id]) {
+    final vId = map['videoId'] as String? ?? '';
     return VideoModel(
-      videoId: map['videoId'] as String? ?? '',
+      videoId: vId.isNotEmpty ? vId : (id ?? ''),
       videoUri: map['videoUri'] as String? ?? '',
       authorId: map['authorId'] as String? ?? '',
       username: map['username'] as String? ?? '',

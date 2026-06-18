@@ -1,7 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../providers/chat_provider.dart';
 
@@ -13,6 +13,9 @@ class ActiveUsersRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeUsersAsync = ref.watch(activeUsersProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final dividerColor = isDark ? const Color(0xFF222224) : const Color(0xFFE8E8E8);
 
     return activeUsersAsync.when(
       data: (userIds) {
@@ -23,9 +26,9 @@ class ActiveUsersRow extends ConsumerWidget {
         return Container(
           height: 100,
           padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: AppTheme.dividerColor, width: 0.5),
+              bottom: BorderSide(color: dividerColor, width: 0.5),
             ),
           ),
           child: ListView.builder(
@@ -62,6 +65,9 @@ class _ActiveUserItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(userProfileStreamProvider(userId));
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
 
     return profileAsync.when(
       data: (profile) {
@@ -91,12 +97,16 @@ class _ActiveUserItem extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 26,
-                        backgroundColor: Colors.grey[800],
+                        backgroundColor: isDark ? Colors.grey[800] : Colors.grey[300],
                         backgroundImage: profile.avatarUrl.isNotEmpty
-                            ? NetworkImage(profile.avatarUrl)
+                            ? CachedNetworkImageProvider(profile.avatarUrl, maxWidth: 80)
                             : null,
                         child: profile.avatarUrl.isEmpty
-                            ? const Icon(Icons.person, color: Colors.white, size: 28)
+                            ? Icon(
+                                Icons.person,
+                                color: isDark ? Colors.white : Colors.black54,
+                                size: 28,
+                              )
                             : null,
                       ),
                       Positioned(
@@ -109,7 +119,7 @@ class _ActiveUserItem extends ConsumerWidget {
                             color: Colors.green,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppTheme.backgroundColor,
+                              color: theme.scaffoldBackgroundColor,
                               width: 2,
                             ),
                           ),
@@ -123,8 +133,8 @@ class _ActiveUserItem extends ConsumerWidget {
                   displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: cs.onSurface,
                     fontSize: 11,
                   ),
                   textAlign: TextAlign.center,

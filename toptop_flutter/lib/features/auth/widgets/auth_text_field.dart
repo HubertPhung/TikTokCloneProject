@@ -77,7 +77,12 @@ class _AuthTextFieldState extends State<AuthTextField> {
         validator: widget.validator,
         textInputAction: widget.textInputAction,
         onFieldSubmitted: widget.onFieldSubmitted,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        textAlign: TextAlign.left, // Đảm bảo căn lề trái chữ nhập vào
+        textAlignVertical: TextAlignVertical.center, // Căn giữa chữ theo chiều dọc
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 16,
+        ),
         decoration: InputDecoration(
           hintText: widget.hintText,
           prefixIcon: widget.prefixIcon != null

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/firebase_providers.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../auth/models/profile_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../models/video_model.dart';
@@ -35,14 +36,14 @@ final videoLikesStateProvider =
   return ref.watch(videoRepositoryProvider).watchLikesState(videoId);
 });
 
-/// StreamProvider theo dõi số lượng bình luận thực tế của video
+/// StreamProvider theo dõi số lượng bình luận thực tế của video (tối ưu hóa chỉ đọc trường totalComments)
 final videoCommentsCountProvider =
     StreamProvider.family<int, String>((ref, videoId) {
   return ref.watch(firestoreProvider)
-      .collection('comments')
-      .where('videoId', isEqualTo: videoId)
+      .collection(AppConstants.videosCollection)
+      .doc(videoId)
       .snapshots()
-      .map((snapshot) => snapshot.docs.length);
+      .map((snapshot) => (snapshot.data()?['totalComments'] as num?)?.toInt() ?? 0);
 });
 
 /// StreamProvider theo dõi danh sách quảng cáo

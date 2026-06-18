@@ -157,7 +157,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 'user-not-found':
         return 'Không tìm thấy tài khoản với email này.';
       case 'wrong-password':
-        return 'Mật khẩu không đúng.';
+      case 'invalid-credential': // Firebase SDK >= 10
+        return 'Email hoặc mật khẩu không đúng.';
       case 'user-disabled':
         return 'Tài khoản đã bị vô hiệu hóa.';
       case 'too-many-requests':

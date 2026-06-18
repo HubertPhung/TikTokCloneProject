@@ -1,41 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/settings/repositories/theme_repository.dart';
 
-/// Notifier quản lý trạng thái ThemeMode của ứng dụng và lưu vào SharedPreferences
-class ThemeNotifier extends StateNotifier<ThemeMode> {
-  static const _themeKey = 'theme_mode';
+/// Provider cung cấp thực thể ThemeRepository
+final themeRepositoryProvider = Provider<ThemeRepository>((ref) {
+  return ThemeRepositoryImpl();
+});
 
-  ThemeNotifier() : super(ThemeMode.system) {
+/// ThemeViewModel chịu trách nhiệm quản lý trạng thái ThemeMode cho toàn ứng dụng
+/// Tuân thủ mô hình MVVM và Clean Architecture
+class ThemeViewModel extends StateNotifier<ThemeMode> {
+  final ThemeRepository _repository;
+
+  ThemeViewModel(this._repository) : super(ThemeMode.system) {
     _loadTheme();
   }
 
-  /// Tải theme từ SharedPreferences
+  /// Tải theme đã lưu khi khởi tạo ViewModel
   Future<void> _loadTheme() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final themeIndex = prefs.getInt(_themeKey);
-      if (themeIndex != null && themeIndex >= 0 && themeIndex < ThemeMode.values.length) {
-        state = ThemeMode.values[themeIndex];
-      }
-    } catch (_) {
-      // Bỏ qua nếu lỗi
-    }
+    final savedMode = await _repository.getThemeMode();
+    state = savedMode;
   }
 
-  /// Thay đổi theme và lưu lại
+  /// Thay đổi theme và lưu lại lâu dài
   Future<void> setThemeMode(ThemeMode mode) async {
+    if (state == mode) return;
     state = mode;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_themeKey, mode.index);
-    } catch (_) {
-      // Bỏ qua nếu lỗi
-    }
+    await _repository.saveThemeMode(mode);
   }
 }
 
-/// Provider của themeMode toàn ứng dụng
-final themeNotifierProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
-  return ThemeNotifier();
+/// Provider quản lý themeMode toàn ứng dụng
+/// Đặt tên là themeNotifierProvider để tương thích ngược hoàn toàn với code cũ
+final themeNotifierProvider = StateNotifierProvider<ThemeViewModel, ThemeMode>((ref) {
+  final repository = ref.watch(themeRepositoryProvider);
+  return ThemeViewModel(repository);
 });

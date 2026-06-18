@@ -11,6 +11,7 @@ import { Users } from './pages/Users';
 import { Moderation } from './pages/Moderation';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { Ads } from './pages/Ads';
 import { LoginPage } from './pages/LoginPage';
 import { useAuth } from './components/auth-provider';
 import { Loader2 } from 'lucide-react';
@@ -47,6 +48,8 @@ export default function App() {
         return (user.role === 'admin' || user.role === 'moderator') ? <Moderation /> : <Dashboard onNavigate={setCurrentTab} />;
       case 'reports':
         return <Reports />;
+      case 'ads':
+        return user.role === 'admin' ? <Ads /> : <Dashboard onNavigate={setCurrentTab} />;
       case 'settings':
         return user.role === 'admin' ? <Settings /> : <Dashboard onNavigate={setCurrentTab} />;
       default:

@@ -21,6 +21,7 @@ class CommentRepository {
     return _firestore
         .collection(AppConstants.commentsCollection)
         .where('videoId', isEqualTo: videoId)
+        .limit(150)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -60,6 +61,7 @@ class CommentRepository {
         await _pushCommentNotification(
           targetUid: repliedCommentAuthorId,
           fromUsername: currentUsername,
+          videoId: comment.videoId,
         );
       }
     }
@@ -69,6 +71,7 @@ class CommentRepository {
       await _pushCommentNotification(
         targetUid: authorVideoId,
         fromUsername: currentUsername,
+        videoId: comment.videoId,
       );
     }
 
@@ -85,6 +88,7 @@ class CommentRepository {
   Future<void> _pushCommentNotification({
     required String targetUid,
     required String fromUsername,
+    required String videoId,
   }) async {
     final notifRef = _database
         .ref(AppConstants.notificationsPath)
@@ -95,6 +99,7 @@ class CommentRepository {
       'fromUsername': fromUsername.isNotEmpty ? fromUsername : 'Ai đó',
       'action': AppConstants.actionComment,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
+      'videoId': videoId,
     });
   }
 
@@ -141,6 +146,39 @@ class CommentRepository {
       // Đếm số lượng key có giá trị true
       final count = data.values.where((v) => v == true).length;
       return {'users': data, 'count': count};
+    });
+  }
+
+  /// Xóa bình luận
+  Future<void> deleteComment({
+    required String commentId,
+    required String videoId,
+    String? parentId,
+  }) async {
+    // 1. Xóa tài liệu bình luận trên Firestore
+    await _firestore
+        .collection(AppConstants.commentsCollection)
+        .doc(commentId)
+        .delete();
+
+    // 2. Nếu là câu trả lời (có parentId), cập nhật tài liệu bình luận cha
+    if (parentId != null && parentId.isNotEmpty) {
+      final parentRef = _firestore
+          .collection(AppConstants.commentsCollection)
+          .doc(parentId);
+
+      await parentRef.update({
+        'totalReplies': FieldValue.increment(-1),
+        'replyIds': FieldValue.arrayRemove([commentId]),
+      });
+    }
+
+    // 3. Giảm tổng số bình luận của video trong bảng videos
+    await _firestore
+        .collection(AppConstants.videosCollection)
+        .doc(videoId)
+        .update({
+      'totalComments': FieldValue.increment(-1),
     });
   }
 }
