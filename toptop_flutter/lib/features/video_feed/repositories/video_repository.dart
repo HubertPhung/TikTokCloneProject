@@ -244,10 +244,18 @@ class VideoRepository {
     await batch.commit();
   }
 
-  /// Theo dõi danh sách video quảng cáo từ Firestore
+  /// Theo dõi danh sách video quảng cáo từ Firestore (chỉ lấy quảng cáo đang hoạt động)
   Stream<List<AdModel>> watchAds() {
     return _firestore.collection('ads').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => AdModel.fromMap(doc.data(), doc.id)).toList();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      return snapshot.docs
+          .map((doc) => AdModel.fromMap(doc.data(), doc.id))
+          .where((ad) {
+            return ad.status == 'active' &&
+                ad.startDate <= now &&
+                ad.endDate >= now;
+          })
+          .toList();
     });
   }
 

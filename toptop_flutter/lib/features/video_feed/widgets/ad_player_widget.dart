@@ -96,10 +96,19 @@ class _AdPlayerWidgetState extends ConsumerState<AdPlayerWidget> {
           userId: currentUserId,
         );
 
-    final url = Uri.parse(widget.ad.targetUrl);
+    // Chuẩn hóa target URL: Tự động thêm https:// nếu thiếu giao thức
+    String targetUrl = widget.ad.targetUrl.trim();
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      targetUrl = 'https://$targetUrl';
+    }
+
+    final url = Uri.parse(targetUrl);
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
+      // Bỏ canLaunchUrl vì lý do bảo mật hệ điều hành có thể trả về false giả,
+      // thay vào đó thử launchUrl trực tiếp và bắt ngoại lệ
+      final success = await launchUrl(url, mode: LaunchMode.externalApplication);
+      if (!success && mounted) {
+        throw Exception('Không thể mở URL');
       }
     } catch (_) {
       if (mounted) {
@@ -343,10 +352,22 @@ class _AdPlayerWidgetState extends ConsumerState<AdPlayerWidget> {
                   )
                 : Container(
                     color: Colors.black,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
-                      ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (widget.ad.thumbnail.isNotEmpty)
+                          Image.network(
+                            widget.ad.thumbnail,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox.shrink(),
+                          ),
+                        const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
           ),
@@ -466,10 +487,18 @@ class _AdPlayerWidgetState extends ConsumerState<AdPlayerWidget> {
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 1.5),
                     color: Colors.white.withValues(alpha: 0.1),
+                    image: widget.ad.thumbnail.isNotEmpty
+                        ? DecorationImage(
+                            image: NetworkImage(widget.ad.thumbnail),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: const Center(
-                    child: Icon(Icons.business_rounded, color: Colors.white, size: 22),
-                  ),
+                  child: widget.ad.thumbnail.isEmpty
+                      ? const Center(
+                          child: Icon(Icons.business_rounded, color: Colors.white, size: 22),
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 24),
 

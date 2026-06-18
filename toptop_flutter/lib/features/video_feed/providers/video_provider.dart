@@ -58,27 +58,24 @@ final homeFeedProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
 
   return videosAsync.when(
     data: (videos) {
-      return adsAsync.when(
-        data: (ads) {
-          final feedItems = <FeedItem>[];
-          int videoCounter = 0;
-          int adIndex = 0;
+      // Lấy danh sách quảng cáo nếu tải thành công, ngược lại sử dụng danh sách trống
+      final ads = adsAsync.value ?? <AdModel>[];
+      
+      final feedItems = <FeedItem>[];
+      int videoCounter = 0;
+      int adIndex = 0;
 
-          for (final video in videos) {
-            feedItems.add(VideoItem(video));
-            videoCounter++;
+      for (final video in videos) {
+        feedItems.add(VideoItem(video));
+        videoCounter++;
 
-            if (videoCounter % 5 == 0 && ads.isNotEmpty) {
-              final selectedAd = ads[adIndex % ads.length];
-              feedItems.add(AdItem(selectedAd));
-              adIndex++;
-            }
-          }
-          return AsyncValue.data(feedItems);
-        },
-        loading: () => const AsyncValue.loading(),
-        error: (err, stack) => AsyncValue.error(err, stack),
-      );
+        if (videoCounter % 5 == 0 && ads.isNotEmpty) {
+          final selectedAd = ads[adIndex % ads.length];
+          feedItems.add(AdItem(selectedAd));
+          adIndex++;
+        }
+      }
+      return AsyncValue.data(feedItems);
     },
     loading: () => const AsyncValue.loading(),
     error: (err, stack) => AsyncValue.error(err, stack),
