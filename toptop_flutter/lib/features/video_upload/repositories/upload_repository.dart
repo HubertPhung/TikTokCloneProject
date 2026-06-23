@@ -1,9 +1,10 @@
 // ignore_for_file: prefer_initializing_formals
 import 'dart:async';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/media/platform_media.dart';
 
 /// Request tùy chỉnh kế thừa từ http.MultipartRequest để giám sát tiến độ tải lên
 class MultipartRequestWithProgress extends http.MultipartRequest {
@@ -37,20 +38,14 @@ class MultipartRequestWithProgress extends http.MultipartRequest {
 class UploadRepository {
   final FirebaseFirestore _firestore;
 
-  UploadRepository({
-    required FirebaseFirestore firestore,
-  }) : _firestore = firestore;
+  UploadRepository({required FirebaseFirestore firestore})
+    : _firestore = firestore;
 
   /// Tải video cục bộ lên Cloudinary bằng REST API và báo tiến trình tải lên từ 0.0 -> 1.0
   Future<String> uploadVideoToCloudinary({
-    required String filePath,
+    required XFile file,
     required void Function(double progress) onProgress,
   }) async {
-    final file = File(filePath);
-    if (!await file.exists()) {
-      throw Exception('Tệp video không tồn tại tại: $filePath');
-    }
-
     final url = Uri.parse(
       'https://api.cloudinary.com/v1_1/${AppConstants.cloudinaryCloudName}/video/upload',
     );
@@ -69,9 +64,9 @@ class UploadRepository {
 
     // Thêm các tham số unsigned upload preset
     request.fields['upload_preset'] = 'toptopclone';
-    
+
     // Đính kèm tệp video
-    final multipartFile = await http.MultipartFile.fromPath('file', filePath);
+    final multipartFile = await PlatformMedia.createCloudinaryVideoPart(file);
     request.files.add(multipartFile);
 
     final streamedResponse = await request.send();
@@ -85,7 +80,9 @@ class UploadRepository {
       if (match != null && match.groupCount >= 1) {
         return match.group(1)!;
       }
-      throw Exception('Không tìm thấy secure_url trong phản hồi từ Cloudinary.');
+      throw Exception(
+        'Không tìm thấy secure_url trong phản hồi từ Cloudinary.',
+      );
     } else {
       throw Exception(
         'Tải video thất bại với mã trạng thái: ${response.statusCode}. Phản hồi: ${response.body}',

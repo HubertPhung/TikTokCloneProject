@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/providers/firebase_providers.dart';
 import 'core/providers/theme_provider.dart';
@@ -15,7 +16,8 @@ class TopTopApp extends ConsumerStatefulWidget {
   ConsumerState<TopTopApp> createState() => _TopTopAppState();
 }
 
-class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserver {
+class _TopTopAppState extends ConsumerState<TopTopApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
@@ -31,7 +33,7 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    
+
     final currentUid = ref.read(authStateProvider).valueOrNull?.uid;
     if (currentUid == null) return;
 
@@ -39,8 +41,8 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
     if (state == AppLifecycleState.resumed) {
       chatRepo.updatePresence(currentUid, true);
     } else if (state == AppLifecycleState.paused ||
-               state == AppLifecycleState.inactive ||
-               state == AppLifecycleState.detached) {
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
       chatRepo.updatePresence(currentUid, false);
     }
   }
@@ -60,7 +62,21 @@ class _TopTopAppState extends ConsumerState<TopTopApp> with WidgetsBindingObserv
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        if (!kIsWeb || child == null) return child ?? const SizedBox.shrink();
+
+        // The browser version intentionally keeps the vertical, phone-first
+        // TikTok experience while remaining comfortable on wide displays.
+        return ColoredBox(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: child,
+            ),
+          ),
+        );
+      },
     );
   }
 }
-

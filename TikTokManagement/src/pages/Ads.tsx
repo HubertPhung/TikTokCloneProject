@@ -152,37 +152,66 @@ export function Ads() {
     return () => unsubAds();
   }, []);
 
-  // Fetch counts from server when ads list changes
+  // Listen to counts from server in real-time when ads list changes
   useEffect(() => {
     if (ads.length === 0) return;
 
-    const fetchAdMetrics = async () => {
-      const metricsMap: Record<string, { impressions: number; views: number; clicks: number }> = {};
-      
-      try {
-        await Promise.all(
-          ads.map(async (ad) => {
-            const [impSnap, viewSnap, clickSnap] = await Promise.all([
-              getCountFromServer(query(collection(db, 'ad_impressions'), where('adId', '==', ad.id))),
-              getCountFromServer(query(collection(db, 'ad_views'), where('adId', '==', ad.id))),
-              getCountFromServer(query(collection(db, 'ad_clicks'), where('adId', '==', ad.id))),
-            ]);
+    const unsubs: (() => void)[] = [];
 
-            // Add basic metrics with fallbacks to avoid displaying 0 during testing
-            metricsMap[ad.id] = {
-              impressions: impSnap.data().count,
-              views: viewSnap.data().count,
-              clicks: clickSnap.data().count,
-            };
-          })
-        );
-        setStats(metricsMap);
-      } catch (err) {
-        console.error("Error counting ad metrics:", err);
-      }
+    // Initialize metrics state for all ads to prevent blank states
+    const initialMetrics: Record<string, { impressions: number; views: number; clicks: number }> = {};
+    ads.forEach(ad => {
+      initialMetrics[ad.id] = stats[ad.id] || { impressions: 0, views: 0, clicks: 0 };
+    });
+    setStats(initialMetrics);
+
+    ads.forEach((ad) => {
+      const qImp = query(collection(db, 'ad_impressions'), where('adId', '==', ad.id));
+      const qView = query(collection(db, 'ad_views'), where('adId', '==', ad.id));
+      const qClick = query(collection(db, 'ad_clicks'), where('adId', '==', ad.id));
+
+      const unsubImp = onSnapshot(qImp, (snap) => {
+        setStats(prev => ({
+          ...prev,
+          [ad.id]: {
+            ...prev[ad.id],
+            impressions: snap.size
+          }
+        }));
+      }, (err) => {
+        console.error(`Error listening to impressions for ${ad.id}:`, err);
+      });
+
+      const unsubView = onSnapshot(qView, (snap) => {
+        setStats(prev => ({
+          ...prev,
+          [ad.id]: {
+            ...prev[ad.id],
+            views: snap.size
+          }
+        }));
+      }, (err) => {
+        console.error(`Error listening to views for ${ad.id}:`, err);
+      });
+
+      const unsubClick = onSnapshot(qClick, (snap) => {
+        setStats(prev => ({
+          ...prev,
+          [ad.id]: {
+            ...prev[ad.id],
+            clicks: snap.size
+          }
+        }));
+      }, (err) => {
+        console.error(`Error listening to clicks for ${ad.id}:`, err);
+      });
+
+      unsubs.push(unsubImp, unsubView, unsubClick);
+    });
+
+    return () => {
+      unsubs.forEach(unsub => unsub());
     };
-
-    fetchAdMetrics();
   }, [ads]);
 
   const openAddModal = () => {

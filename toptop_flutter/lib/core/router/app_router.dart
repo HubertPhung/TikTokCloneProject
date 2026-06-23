@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:toptop_flutter/features/auth/providers/auth_provider.dart';
 import 'package:toptop_flutter/features/auth/layouts/auth_choice_screen.dart';
@@ -40,13 +41,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       child: child,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(1.0, 0.0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeInOut,
-          )),
+          position:
+              Tween<Offset>(
+                begin: const Offset(1.0, 0.0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+              ),
           child: child,
         );
       },
@@ -71,9 +72,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Nếu chưa đăng nhập và đang ở trang cần auth
       final isAuthRoute = currentPath.startsWith('/auth');
-      
+
       // Danh sách các route được phép truy cập khi chưa đăng nhập (Khách)
-      final isAllowedGuestRoute = isAuthRoute ||
+      final isAllowedGuestRoute =
+          isAuthRoute ||
           currentPath == '/home' ||
           currentPath == '/search' ||
           currentPath.startsWith('/video/') ||
@@ -93,10 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
     routes: [
       // Splash Screen
-      GoRoute(
-        path: '/',
-        builder: (context, state) => const SplashScreen(),
-      ),
+      GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
 
       // Auth Routes
       GoRoute(
@@ -169,13 +168,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           child: const CameraScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(1.0, 0.0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeInOut,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+                  ),
               child: child,
             );
           },
@@ -186,10 +185,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/video/description',
         builder: (context, state) {
-          final videoPath = state.uri.queryParameters['videoPath'];
           final videoId = state.uri.queryParameters['videoId'];
           return VideoDescriptionScreen(
-            videoPath: videoPath,
+            videoFile: state.extra is XFile ? state.extra as XFile : null,
             videoId: videoId,
           );
         },
@@ -200,7 +198,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/video/:videoId',
         builder: (context, state) {
           final videoId = state.pathParameters['videoId'] ?? '';
-          final showComments = state.uri.queryParameters['showComments'] == 'true';
+          final showComments =
+              state.uri.queryParameters['showComments'] == 'true';
           return SingleVideoScreen(
             videoId: videoId,
             showComments: showComments,
@@ -295,10 +294,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Các màn hình Cài đặt & Quyền riêng tư
       GoRoute(
         path: '/settings',
-        pageBuilder: (context, state) => buildSlidePage(
-          key: state.pageKey,
-          child: const SettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildSlidePage(key: state.pageKey, child: const SettingsScreen()),
         routes: [
           GoRoute(
             path: 'account',

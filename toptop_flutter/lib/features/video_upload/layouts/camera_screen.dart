@@ -1,5 +1,5 @@
 // ignore_for_file: deprecated_member_use
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -37,8 +37,7 @@ class _CameraScreenState extends State<CameraScreen> {
       }
 
       // Xác minh kích thước file (< 100MB)
-      final localFile = File(file.path);
-      final sizeInBytes = await localFile.length();
+      final sizeInBytes = await file.length();
       final sizeInMb = sizeInBytes / (1024 * 1024);
 
       if (sizeInMb > 100) {
@@ -47,7 +46,10 @@ class _CameraScreenState extends State<CameraScreen> {
             context: context,
             builder: (context) => AlertDialog(
               backgroundColor: const Color(0xFF1D1D1F),
-              title: const Text('Lỗi kích thước', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Lỗi kích thước',
+                style: TextStyle(color: Colors.white),
+              ),
               content: const Text(
                 'Dung lượng video vượt quá 100MB. Vui lòng chọn tệp nhỏ hơn.',
                 style: TextStyle(color: Colors.grey),
@@ -55,7 +57,10 @@ class _CameraScreenState extends State<CameraScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('OK', style: TextStyle(color: AppTheme.primaryColor)),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(color: AppTheme.primaryColor),
+                  ),
                 ),
               ],
             ),
@@ -69,7 +74,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       // Hợp lệ -> Chuyển hướng sang màn hình thêm mô tả video
       if (mounted) {
-        context.push('/video/description?videoPath=${Uri.encodeComponent(file.path)}');
+        context.push('/video/description', extra: file);
       }
     } catch (e) {
       if (mounted) {
@@ -109,9 +114,7 @@ class _CameraScreenState extends State<CameraScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.primaryColor,
-              ),
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
             )
           : Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -134,14 +137,15 @@ class _CameraScreenState extends State<CameraScreen> {
                   ),
                   const SizedBox(height: 48),
 
-                  // Nút ghi hình trực tiếp
-                  _buildUploadCard(
-                    icon: Icons.videocam_rounded,
-                    title: 'Quay video mới',
-                    subtitle: 'Ghi hình tối đa 5 phút bằng máy ảnh',
-                    onTap: () => _pickVideo(ImageSource.camera),
-                  ),
-                  const SizedBox(height: 20),
+                  if (!kIsWeb) ...[
+                    _buildUploadCard(
+                      icon: Icons.videocam_rounded,
+                      title: 'Quay video mới',
+                      subtitle: 'Ghi hình tối đa 5 phút bằng máy ảnh',
+                      onTap: () => _pickVideo(ImageSource.camera),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
 
                   // Nút tải lên từ thư viện
                   _buildUploadCard(
@@ -203,18 +207,12 @@ class _CameraScreenState extends State<CameraScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_right,
-                color: Colors.white30,
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white30),
             ],
           ),
         ),

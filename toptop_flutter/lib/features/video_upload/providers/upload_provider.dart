@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/firebase_providers.dart';
 import '../repositories/legacy_hashtag_fixer.dart';
 import '../repositories/upload_repository.dart';
@@ -43,9 +44,7 @@ final geminiServiceProvider = Provider<GeminiService>((ref) {
 
 /// Provider của UploadRepository
 final uploadRepositoryProvider = Provider<UploadRepository>((ref) {
-  return UploadRepository(
-    firestore: ref.watch(firestoreProvider),
-  );
+  return UploadRepository(firestore: ref.watch(firestoreProvider));
 });
 
 /// Provider của LegacyHashtagFixer
@@ -60,11 +59,12 @@ final legacyHashtagFixerProvider = Provider<LegacyHashtagFixer>((ref) {
 class UploadNotifier extends StateNotifier<UploadState> {
   final UploadRepository _repository;
 
-  UploadNotifier(this._repository) : super(UploadState(status: UploadStatus.idle));
+  UploadNotifier(this._repository)
+    : super(UploadState(status: UploadStatus.idle));
 
   /// Thực thi toàn bộ quy trình: Tải lên Cloudinary -> Lưu thông tin Firestore
   Future<bool> uploadAndSaveVideo({
-    required String filePath,
+    required XFile file,
     required String description,
     required String authorId,
     required String username,
@@ -78,10 +78,10 @@ class UploadNotifier extends StateNotifier<UploadState> {
 
     try {
       final videoId = DateTime.now().millisecondsSinceEpoch.toString();
-      
+
       // 1. Tải lên Cloudinary với theo dõi tiến độ
       final videoUrl = await _repository.uploadVideoToCloudinary(
-        filePath: filePath,
+        file: file,
         onProgress: (p) {
           state = UploadState(status: UploadStatus.uploading, progress: p);
         },
@@ -107,7 +107,10 @@ class UploadNotifier extends StateNotifier<UploadState> {
       state = state.copyWith(status: UploadStatus.success, videoUrl: videoUrl);
       return true;
     } catch (e) {
-      state = state.copyWith(status: UploadStatus.error, errorMessage: e.toString());
+      state = state.copyWith(
+        status: UploadStatus.error,
+        errorMessage: e.toString(),
+      );
       return false;
     }
   }
@@ -119,7 +122,8 @@ class UploadNotifier extends StateNotifier<UploadState> {
 }
 
 /// Provider quản lý trạng thái tác vụ tải lên video
-final uploadStateProvider =
-    StateNotifierProvider<UploadNotifier, UploadState>((ref) {
+final uploadStateProvider = StateNotifierProvider<UploadNotifier, UploadState>((
+  ref,
+) {
   return UploadNotifier(ref.watch(uploadRepositoryProvider));
 });

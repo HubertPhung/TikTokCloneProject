@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/firebase_providers.dart';
@@ -8,34 +7,34 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/media/platform_media.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/upload_provider.dart';
 
 /// Màn hình thêm mô tả video, gợi ý hashtag bằng AI và thực hiện tải lên Cloudinary
 class VideoDescriptionScreen extends ConsumerStatefulWidget {
-  final String? videoPath;
+  final XFile? videoFile;
   final String? videoId; // Truyền vào nếu ở chế độ chỉnh sửa (Edit Mode)
 
-  const VideoDescriptionScreen({
-    super.key,
-    this.videoPath,
-    this.videoId,
-  });
+  const VideoDescriptionScreen({super.key, this.videoFile, this.videoId});
 
   @override
-  ConsumerState<VideoDescriptionScreen> createState() => _VideoDescriptionScreenState();
+  ConsumerState<VideoDescriptionScreen> createState() =>
+      _VideoDescriptionScreenState();
 }
 
-class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen> {
+class _VideoDescriptionScreenState
+    extends ConsumerState<VideoDescriptionScreen> {
   final TextEditingController _descController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  
+
   VideoPlayerController? _videoPlayerController;
   bool _isEditMode = false;
   bool _isAiLoading = false;
   String _previewUrl = '';
-  
+
   // Trạng thái bảo mật và chiến dịch Đà Lạt
   bool _allowDownload = true;
   bool _isCopyrightProtected = false;
@@ -45,10 +44,10 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
   void initState() {
     super.initState();
     _isEditMode = widget.videoId != null && widget.videoId!.isNotEmpty;
-    
+
     if (_isEditMode) {
       _loadVideoDetails();
-    } else if (widget.videoPath != null && widget.videoPath!.isNotEmpty) {
+    } else if (widget.videoFile != null) {
       _initLocalVideoPlayer();
     }
   }
@@ -84,15 +83,22 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
 
   /// Khởi chạy trình xem trước video cục bộ
   Future<void> _initLocalVideoPlayer() async {
-    final file = File(widget.videoPath!);
-    if (await file.exists()) {
-      _videoPlayerController = VideoPlayerController.file(file)
-        ..initialize().then((_) {
-          setState(() {});
-          _videoPlayerController?.setLooping(true);
-          _videoPlayerController?.play();
-          _videoPlayerController?.setVolume(0.0); // Mute preview
-        });
+    final file = widget.videoFile;
+    if (file == null) return;
+
+    try {
+      _videoPlayerController = await PlatformMedia.createVideoPreview(file);
+      await _videoPlayerController!.initialize();
+      await _videoPlayerController!.setLooping(true);
+      await _videoPlayerController!.setVolume(0.0);
+      await _videoPlayerController!.play();
+      if (mounted) setState(() {});
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xem trước video: $error')),
+        );
+      }
     }
   }
 
@@ -101,7 +107,7 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
     final text = _descController.text;
     final selection = _descController.selection;
     final cursor = selection.start;
-    
+
     String hashtag = '#';
     // Thêm khoảng trắng phía trước nếu ký tự trước đó không phải khoảng trắng
     if (cursor > 0 && text[cursor - 1] != ' ') {
@@ -117,7 +123,9 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
     _descController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(
-        offset: (selection.start == -1 ? text.length : selection.start) + hashtag.length,
+        offset:
+            (selection.start == -1 ? text.length : selection.start) +
+            hashtag.length,
       ),
     );
     _focusNode.requestFocus();
@@ -139,26 +147,30 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
         if (response.statusCode == 200) {
           aiResult = await gemini.suggestHashtags(response.bodyBytes);
         }
-      } 
-      
+      }
+
       // Fallback nếu rỗng hoặc ở chế độ upload mới (gợi ý dựa trên từ khóa văn bản)
       if (aiResult.isEmpty) {
         final currentText = _descController.text.trim();
         final textPrompt = currentText.isNotEmpty
             ? 'Hãy gợi ý 5-10 hashtag TikTok tiếng Việt viral liên quan đến mô tả: "$currentText". Chỉ trả về các hashtag cách nhau bởi dấu cách.'
             : 'Hãy gợi ý 5-10 hashtag TikTok tiếng Việt đang thịnh hành (viral) nhất hiện nay. Chỉ trả về các hashtag cách nhau bởi dấu cách.';
-            
+
         final model = GenerativeModel(
           model: 'gemini-1.5-flash',
           apiKey: AppConstants.geminiApiKey,
         );
-        final response = await model.generateContent([Content.text(textPrompt)]);
+        final response = await model.generateContent([
+          Content.text(textPrompt),
+        ]);
         aiResult = response.text ?? '';
       }
 
       if (aiResult.isNotEmpty && mounted) {
         final currentText = _descController.text;
-        final spacing = (currentText.isEmpty || currentText.endsWith(' ')) ? '' : ' ';
+        final spacing = (currentText.isEmpty || currentText.endsWith(' '))
+            ? ''
+            : ' ';
         _descController.text = '$currentText$spacing${aiResult.trim()}';
         _descController.selection = TextSelection.collapsed(
           offset: _descController.text.length,
@@ -166,9 +178,9 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi gợi ý AI: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi gợi ý AI: $e')));
       }
     } finally {
       if (mounted) {
@@ -182,10 +194,12 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
   /// Xử lý cập nhật thông tin video ở chế độ Edit
   Future<void> _handleUpdate() async {
     final description = _descController.text.trim();
-    
+
     // Tách các hashtag từ nội dung mô tả (không trùng lặp)
     final Set<String> hashtagsSet = {};
-    final matches = RegExp(r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)').allMatches(description);
+    final matches = RegExp(
+      r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)',
+    ).allMatches(description);
     for (final m in matches) {
       final tagText = m.group(1);
       if (tagText != null) {
@@ -204,16 +218,16 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
     });
 
     try {
-      final updates = {
-        'description': description,
-        'hashtags': hashtagsList,
-      };
+      final updates = {'description': description, 'hashtags': hashtagsList};
 
       // 1. Cập nhật bảng videos
       await firestore.collection('videos').doc(widget.videoId).update(updates);
 
       // 2. Cập nhật bảng video_summaries
-      await firestore.collection('video_summaries').doc(widget.videoId).update(updates);
+      await firestore
+          .collection('video_summaries')
+          .doc(widget.videoId)
+          .update(updates);
 
       // 3. Cập nhật bảng mirror của user
       await firestore
@@ -252,9 +266,9 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi cập nhật: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật: $e')));
       }
     } finally {
       if (mounted) {
@@ -267,7 +281,7 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
 
   /// Xử lý đăng tải video mới
   Future<void> _handlePublish() async {
-    if (widget.videoPath == null || widget.videoPath!.isEmpty) return;
+    if (widget.videoFile == null) return;
 
     final user = ref.read(currentUserProvider);
     final userProfile = ref.read(currentUserProfileProvider).valueOrNull;
@@ -280,10 +294,12 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
     }
 
     final description = _descController.text.trim();
-    
+
     // Trích xuất hashtag (không trùng lặp)
     final Set<String> hashtagsSet = {};
-    final matches = RegExp(r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)').allMatches(description);
+    final matches = RegExp(
+      r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)',
+    ).allMatches(description);
     for (final m in matches) {
       final tagText = m.group(1);
       if (tagText != null) {
@@ -297,12 +313,12 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
 
     // Bắt đầu quy trình tải lên
     final uploadNotifier = ref.read(uploadStateProvider.notifier);
-    
+
     // Hiển thị dialog tiến trình tải lên
     _showUploadProgressDialog();
 
     final success = await uploadNotifier.uploadAndSaveVideo(
-      filePath: widget.videoPath!,
+      file: widget.videoFile!,
       description: description,
       authorId: user.uid,
       username: myUsername,
@@ -329,9 +345,9 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
     } else {
       final err = ref.read(uploadStateProvider).errorMessage;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Đăng video thất bại: $err')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Đăng video thất bại: $err')));
       }
     }
   }
@@ -431,23 +447,44 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                                 color: Colors.grey[900],
                                 child: _isEditMode
                                     ? (_previewUrl.isNotEmpty
-                                        ? CachedNetworkImage(
-                                            imageUrl: _previewUrl,
-                                            fit: BoxFit.cover,
-                                            memCacheWidth: 200, // Tối ưu kích thước lưu cache bộ nhớ
-                                            placeholder: (context, url) =>
-                                                const Icon(Icons.image, color: Colors.white24),
-                                            errorWidget: (context, url, error) =>
-                                                const Icon(Icons.image, color: Colors.white24),
-                                          )
-                                        : const Icon(Icons.image, color: Colors.white24))
+                                          ? CachedNetworkImage(
+                                              imageUrl: _previewUrl,
+                                              fit: BoxFit.cover,
+                                              memCacheWidth:
+                                                  200, // Tối ưu kích thước lưu cache bộ nhớ
+                                              placeholder: (context, url) =>
+                                                  const Icon(
+                                                    Icons.image,
+                                                    color: Colors.white24,
+                                                  ),
+                                              errorWidget:
+                                                  (context, url, error) =>
+                                                      const Icon(
+                                                        Icons.image,
+                                                        color: Colors.white24,
+                                                      ),
+                                            )
+                                          : const Icon(
+                                              Icons.image,
+                                              color: Colors.white24,
+                                            ))
                                     : (_videoPlayerController != null &&
-                                            _videoPlayerController!.value.isInitialized
-                                        ? AspectRatio(
-                                            aspectRatio: _videoPlayerController!.value.aspectRatio,
-                                            child: VideoPlayer(_videoPlayerController!),
-                                          )
-                                        : const Icon(Icons.play_arrow, color: Colors.white24)),
+                                              _videoPlayerController!
+                                                  .value
+                                                  .isInitialized
+                                          ? AspectRatio(
+                                              aspectRatio:
+                                                  _videoPlayerController!
+                                                      .value
+                                                      .aspectRatio,
+                                              child: VideoPlayer(
+                                                _videoPlayerController!,
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.play_arrow,
+                                              color: Colors.white24,
+                                            )),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -457,11 +494,18 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                               child: TextField(
                                 controller: _descController,
                                 focusNode: _focusNode,
-                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
                                 maxLines: 6,
                                 decoration: const InputDecoration(
-                                  hintText: 'Nhập mô tả cho video của bạn ở đây...',
-                                  hintStyle: TextStyle(color: AppTheme.textHint, fontSize: 13),
+                                  hintText:
+                                      'Nhập mô tả cho video của bạn ở đây...',
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.textHint,
+                                    fontSize: 13,
+                                  ),
                                   border: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   enabledBorder: InputBorder.none,
@@ -478,8 +522,18 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                             // Nút thêm phím # nhanh
                             OutlinedButton.icon(
                               onPressed: _insertHashtagSymbol,
-                              icon: const Icon(Icons.tag, size: 16, color: Colors.white),
-                              label: const Text('Thêm #', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              icon: const Icon(
+                                Icons.tag,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Thêm #',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: Colors.white24),
                                 shape: RoundedRectangleBorder(
@@ -492,8 +546,18 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                             // Nút gợi ý AI
                             ElevatedButton.icon(
                               onPressed: _suggestHashtags,
-                              icon: const Icon(Icons.auto_awesome, size: 16, color: Colors.white),
-                              label: const Text('Gợi ý hashtag AI', style: TextStyle(color: Colors.white, fontSize: 13)),
+                              icon: const Icon(
+                                Icons.auto_awesome,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              label: const Text(
+                                'Gợi ý hashtag AI',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2B2B2D),
                                 shape: RoundedRectangleBorder(
@@ -526,48 +590,71 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                               color: Colors.white.withValues(alpha: 0.08),
                             ),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
                           child: Column(
                             children: [
+                              // Cho phép tải xuống
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                activeThumbColor: AppTheme.primaryColor,
+                                activeTrackColor: AppTheme.primaryColor
+                                    .withValues(alpha: 0.4),
+                                title: const Text(
+                                  'Cho phép tải xuống',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'Người xem có thể lưu video này',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                secondary: const Icon(
+                                  Icons.download_rounded,
+                                  color: Colors.white70,
+                                ),
+                                value: _allowDownload,
+                                onChanged: (val) =>
+                                    setState(() => _allowDownload = val),
+                              ),
 
-                        // Cho phép tải xuống
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          activeThumbColor: AppTheme.primaryColor,
-                          activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                          title: const Text(
-                            'Cho phép tải xuống',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          subtitle: const Text(
-                            'Người xem có thể lưu video này',
-                            style: TextStyle(color: Colors.white54, fontSize: 12),
-                          ),
-                          secondary: const Icon(Icons.download_rounded, color: Colors.white70),
-                          value: _allowDownload,
-                          onChanged: (val) => setState(() => _allowDownload = val),
-                        ),
+                              const Divider(color: Colors.white12, height: 1),
 
-                        const Divider(color: Colors.white12, height: 1),
-
-                        // Bảo vệ bản quyền
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          activeThumbColor: AppTheme.primaryColor,
-                          activeTrackColor: AppTheme.primaryColor.withValues(alpha: 0.4),
-                          title: const Text(
-                            'Bảo vệ bản quyền',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          subtitle: const Text(
-                            'Đánh dấu video là nội dung gốc, được bảo vệ',
-                            style: TextStyle(color: Colors.white54, fontSize: 12),
-                          ),
-                          secondary: const Icon(Icons.copyright_rounded, color: Colors.white70),
-                          value: _isCopyrightProtected,
-                          onChanged: (val) => setState(() => _isCopyrightProtected = val),
-                        ),
-
+                              // Bảo vệ bản quyền
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                activeThumbColor: AppTheme.primaryColor,
+                                activeTrackColor: AppTheme.primaryColor
+                                    .withValues(alpha: 0.4),
+                                title: const Text(
+                                  'Bảo vệ bản quyền',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'Đánh dấu video là nội dung gốc, được bảo vệ',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                secondary: const Icon(
+                                  Icons.copyright_rounded,
+                                  color: Colors.white70,
+                                ),
+                                value: _isCopyrightProtected,
+                                onChanged: (val) =>
+                                    setState(() => _isCopyrightProtected = val),
+                              ),
                             ],
                           ),
                         ),
@@ -587,33 +674,51 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                         // Card container cho campaign
                         Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withValues(alpha: 0.06),
+                            color: const Color(
+                              0xFF4CAF50,
+                            ).withValues(alpha: 0.06),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                              color: const Color(
+                                0xFF4CAF50,
+                              ).withValues(alpha: 0.15),
                             ),
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
+                          ),
                           child: Column(
                             children: [
-
-                        // Chiến dịch Đà Lạt
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          activeThumbColor: const Color(0xFF4CAF50),
-                          activeTrackColor: const Color(0xFF4CAF50).withValues(alpha: 0.4),
-                          title: const Text(
-                            '🌲 Đà Lạt Trong Tôi',
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                          subtitle: const Text(
-                            'Tham gia chiến dịch quảng bá du lịch Đà Lạt để video được ưu tiên hiển thị',
-                            style: TextStyle(color: Colors.white54, fontSize: 12),
-                          ),
-                          secondary: const Icon(Icons.eco_rounded, color: Color(0xFF4CAF50)),
-                          value: _isDalatCampaign,
-                          onChanged: (val) => setState(() => _isDalatCampaign = val),
-                        ),
+                              // Chiến dịch Đà Lạt
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                activeThumbColor: const Color(0xFF4CAF50),
+                                activeTrackColor: const Color(
+                                  0xFF4CAF50,
+                                ).withValues(alpha: 0.4),
+                                title: const Text(
+                                  '🌲 Đà Lạt Trong Tôi',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: const Text(
+                                  'Tham gia chiến dịch quảng bá du lịch Đà Lạt để video được ưu tiên hiển thị',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                secondary: const Icon(
+                                  Icons.eco_rounded,
+                                  color: Color(0xFF4CAF50),
+                                ),
+                                value: _isDalatCampaign,
+                                onChanged: (val) =>
+                                    setState(() => _isDalatCampaign = val),
+                              ),
                             ],
                           ),
                         ),
@@ -633,14 +738,18 @@ class _VideoDescriptionScreenState extends ConsumerState<VideoDescriptionScreen>
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.3,
+                              ),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: _isEditMode ? _handleUpdate : _handlePublish,
+                          onPressed: _isEditMode
+                              ? _handleUpdate
+                              : _handlePublish,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,

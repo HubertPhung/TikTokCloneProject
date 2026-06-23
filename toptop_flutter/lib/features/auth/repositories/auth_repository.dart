@@ -2,6 +2,7 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -17,8 +18,8 @@ class AuthRepository {
   AuthRepository({
     required FirebaseAuth auth,
     required FirebaseFirestore firestore,
-  })  : _auth = auth,
-        _firestore = firestore;
+  }) : _auth = auth,
+       _firestore = firestore;
 
   /// Người dùng hiện tại
   User? get currentUser => _auth.currentUser;
@@ -99,31 +100,50 @@ class AuthRepository {
   /// Đăng nhập bằng Google Account
   /// Port từ EmailSignInActivity.java
   Future<User?> signInWithGoogle() async {
-    // 1. Kích hoạt luồng đăng nhập Google
-    final googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) {
-      return null; // Người dùng hủy bỏ chọn tài khoản
-    }
+    late User user;
+    late String displayName;
+    late String email;
+    late String photoUrl;
 
-    // 2. Lấy thông tin xác thực từ Google
-    final googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+    if (kIsWeb) {
+      // Firebase owns the browser OAuth flow. This avoids coupling Web to an
+      // Android-generated client ID in index.html and uses Firebase's
+      // authorized-domain configuration instead.
+      final provider = GoogleAuthProvider()
+        ..setCustomParameters({'prompt': 'select_account'});
+      final credential = await _auth.signInWithPopup(provider);
+      user = credential.user!;
+      displayName = user.displayName ?? '';
+      email = user.email ?? '';
+      photoUrl = user.photoURL ?? '';
+    } else {
+      // Android and iOS use the native Google account chooser.
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null;
 
-    // 3. Đăng nhập vào Firebase Auth bằng Google Credential
-    final userCredential = await _auth.signInWithCredential(credential);
-    final user = userCredential.user;
-    if (user == null) {
-      throw Exception('Đăng nhập bằng tài khoản Google thất bại.');
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCredential = await _auth.signInWithCredential(credential);
+      final signedInUser = userCredential.user;
+      if (signedInUser == null) {
+        throw Exception('Đăng nhập bằng tài khoản Google thất bại.');
+      }
+      user = signedInUser;
+      displayName = googleUser.displayName ?? '';
+      email = googleUser.email;
+      photoUrl = googleUser.photoUrl ?? '';
     }
 
     // 4. Kiểm tra xem user document đã tồn tại trên Firestore chưa
-    final userDocRef = _firestore.collection(AppConstants.usersCollection).doc(user.uid);
+    final userDocRef = _firestore
+        .collection(AppConstants.usersCollection)
+        .doc(user.uid);
     final userDoc = await userDocRef.get();
 
-    String username = googleUser.displayName ?? '';
+    String username = displayName;
     if (username.isEmpty) {
       username = 'user_${user.uid.substring(0, 5)}';
     }
@@ -136,8 +156,8 @@ class AuthRepository {
         'userId': user.uid,
         'username': username,
         'birthdate': '',
-        'avatarUrl': googleUser.photoUrl ?? '',
-        'email': googleUser.email,
+        'avatarUrl': photoUrl,
+        'email': email,
         'isPrivate': false,
         'phone': '',
         'status': 'active',
@@ -149,21 +169,25 @@ class AuthRepository {
       final status = userDoc.data()?['status'] as String?;
       if (status == 'banned') {
         await signOut();
-        throw Exception('Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng.');
+        throw Exception(
+          'Tài khoản của bạn đã bị khóa do vi phạm tiêu chuẩn cộng đồng.',
+        );
       }
     }
 
     // 5. Kiểm tra hồ sơ (profile) đã tồn tại chưa
-    final profileDocRef = _firestore.collection(AppConstants.profilesCollection).doc(user.uid);
+    final profileDocRef = _firestore
+        .collection(AppConstants.profilesCollection)
+        .doc(user.uid);
     final profileDoc = await profileDocRef.get();
 
     if (!profileDoc.exists) {
       final profileData = {
         'userId': user.uid,
-        'email': googleUser.email,
+        'email': email,
         'username': username,
-        'fullname': googleUser.displayName ?? username,
-        'avatar': googleUser.photoUrl ?? '',
+        'fullname': displayName.isNotEmpty ? displayName : username,
+        'avatar': photoUrl,
         'bio': 'Toptop user',
         'followers': 0,
         'following': 0,
@@ -211,8 +235,8 @@ class AuthRepository {
         .doc(uid)
         .snapshots()
         .map((doc) {
-      if (!doc.exists || doc.data() == null) return null;
-      return UserModel.fromMap(doc.data()!);
-    });
+          if (!doc.exists || doc.data() == null) return null;
+          return UserModel.fromMap(doc.data()!);
+        });
   }
 }

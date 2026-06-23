@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_assets.dart';
@@ -18,7 +19,8 @@ class AuthChoiceScreen extends ConsumerWidget {
 
     // Lắng nghe và hiển thị lỗi nếu có
     ref.listen<AuthState>(authNotifierProvider, (prev, next) {
-      if (next.errorMessage != null && next.errorMessage != prev?.errorMessage) {
+      if (next.errorMessage != null &&
+          next.errorMessage != prev?.errorMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -85,10 +87,7 @@ class AuthChoiceScreen extends ConsumerWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
-                      child: Image.asset(
-                        AppAssets.logo,
-                        fit: BoxFit.cover,
-                      ),
+                      child: Image.asset(AppAssets.logo, fit: BoxFit.cover),
                     ),
                   ),
                   const SizedBox(height: 28),
@@ -118,16 +117,7 @@ class AuthChoiceScreen extends ConsumerWidget {
 
                   // Đăng nhập bằng Google
                   _AuthChoiceButton(
-                    icon: Image.network(
-                      'https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png',
-                      width: 22,
-                      height: 22,
-                      errorBuilder: (context, error, stackTrace) => const Icon(
-                        Icons.account_circle_outlined,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
+                    icon: const _GoogleLogo(),
                     label: AppStrings.btnChoiceGoogle,
                     onTap: authState.isLoading
                         ? () {}
@@ -204,6 +194,22 @@ class AuthChoiceScreen extends ConsumerWidget {
   }
 }
 
+/// A local Google mark. Keeping it in Flutter avoids a network/CORS failure
+/// on the sign-in screen before the user has authenticated.
+class _GoogleLogo extends StatelessWidget {
+  const _GoogleLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      'assets/images/google_logo.svg',
+      width: 22,
+      height: 22,
+      semanticsLabel: 'Google',
+    );
+  }
+}
+
 /// Nút chọn phương thức đăng nhập — Premium style
 class _AuthChoiceButton extends StatelessWidget {
   final Widget icon;
@@ -229,9 +235,7 @@ class _AuthChoiceButton extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 15),
           decoration: BoxDecoration(
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
             borderRadius: BorderRadius.circular(12),
             color: Colors.white.withValues(alpha: 0.04),
           ),

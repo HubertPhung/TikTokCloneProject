@@ -1,11 +1,12 @@
 // ignore_for_file: prefer_initializing_formals
 
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/media/platform_media.dart';
 import '../../auth/models/profile_model.dart';
 import '../../video_feed/models/video_summary_model.dart';
 
@@ -20,9 +21,9 @@ class ProfileRepository {
     required FirebaseFirestore firestore,
     required FirebaseDatabase database,
     required FirebaseStorage storage,
-  })  : _firestore = firestore,
-        _database = database,
-        _storage = storage;
+  }) : _firestore = firestore,
+       _database = database,
+       _storage = storage;
 
   /// Lấy thông tin profile bằng UID
   Future<ProfileModel?> getProfile(String uid) async {
@@ -42,9 +43,9 @@ class ProfileRepository {
         .doc(uid)
         .snapshots()
         .map((doc) {
-      if (!doc.exists || doc.data() == null) return null;
-      return ProfileModel.fromMap(doc.data()!);
-    });
+          if (!doc.exists || doc.data() == null) return null;
+          return ProfileModel.fromMap(doc.data()!);
+        });
   }
 
   /// Cập nhật Bio
@@ -58,12 +59,15 @@ class ProfileRepository {
 
   /// Cập nhật ảnh đại diện lên Firebase Storage
   /// Port từ EditProfileActivity.uploadAvatarToCloudinary() nhưng dùng Firebase Storage nội bộ
-  Future<String> updateAvatar(String uid, String localPath) async {
-    final file = File(localPath);
+  Future<String> updateAvatar(String uid, XFile file) async {
     final storageRef = _storage.ref().child('avatars').child('$uid.jpg');
 
     // 1. Tải lên Storage
-    final uploadTask = await storageRef.putFile(file);
+    final uploadTask = await PlatformMedia.uploadToFirebaseStorage(
+      reference: storageRef,
+      file: file,
+      metadata: SettableMetadata(contentType: file.mimeType ?? 'image/jpeg'),
+    );
     final downloadUrl = await uploadTask.ref.getDownloadURL();
 
     // 2. Cập nhật profiles collection
@@ -71,15 +75,12 @@ class ProfileRepository {
         .collection(AppConstants.profilesCollection)
         .doc(uid)
         .update({
-      'avatar': downloadUrl,
-      'avatarUrl': downloadUrl, // Giữ cả hai field để tương thích ngược
-    });
+          'avatar': downloadUrl,
+          'avatarUrl': downloadUrl, // Giữ cả hai field để tương thích ngược
+        });
 
     // 3. Cập nhật users collection
-    await _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({
+    await _firestore.collection(AppConstants.usersCollection).doc(uid).update({
       'avatar': downloadUrl,
       'avatarUrl': downloadUrl,
     });
@@ -106,10 +107,9 @@ class ProfileRepository {
     }
 
     // 2. Tiến hành cập nhật ở cả users và profiles
-    await _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({'username': newUsername});
+    await _firestore.collection(AppConstants.usersCollection).doc(uid).update({
+      'username': newUsername,
+    });
 
     await _firestore
         .collection(AppConstants.profilesCollection)
@@ -139,10 +139,9 @@ class ProfileRepository {
     required String uid,
     required String birthdate,
   }) async {
-    await _firestore
-        .collection(AppConstants.usersCollection)
-        .doc(uid)
-        .update({'birthdate': birthdate});
+    await _firestore.collection(AppConstants.usersCollection).doc(uid).update({
+      'birthdate': birthdate,
+    });
 
     await _firestore
         .collection(AppConstants.profilesCollection)
@@ -158,47 +157,49 @@ class ProfileRepository {
         .where('authorId', isEqualTo: uid)
         .snapshots()
         .map((snapshot) {
-      // Sắp xếp in-memory theo timestamp giảm dần
-      final docs = snapshot.docs.toList();
-      docs.sort((a, b) {
-        final aTime = (a.data()['timestamp'] as num?)?.toInt() ?? 0;
-        final bTime = (b.data()['timestamp'] as num?)?.toInt() ?? 0;
-        return bTime.compareTo(aTime);
-      });
+          // Sắp xếp in-memory theo timestamp giảm dần
+          final docs = snapshot.docs.toList();
+          docs.sort((a, b) {
+            final aTime = (a.data()['timestamp'] as num?)?.toInt() ?? 0;
+            final bTime = (b.data()['timestamp'] as num?)?.toInt() ?? 0;
+            return bTime.compareTo(aTime);
+          });
 
-      final list = <VideoSummaryModel>[];
-      final limitedDocs = docs.take(50);
+          final list = <VideoSummaryModel>[];
+          final limitedDocs = docs.take(50);
 
-      for (final doc in limitedDocs) {
-        final data = doc.data();
-        final modStatus = data['moderationStatus'] as String?;
-        if (modStatus == 'rejected') continue;
+          for (final doc in limitedDocs) {
+            final data = doc.data();
+            final modStatus = data['moderationStatus'] as String?;
+            if (modStatus == 'rejected') continue;
 
-        String thumb = data['thumbnailUri'] as String? ?? '';
-        if (thumb.isEmpty) {
-          thumb = data['thumbnailUrl'] as String? ?? '';
-        }
-        if (thumb.isEmpty) {
-          final videoUri = data['videoUri'] as String? ?? '';
-          if (videoUri.contains('cloudinary.com')) {
-            thumb = videoUri.replaceAll('.mp4', '.jpg');
-            if (thumb.contains('/upload/')) {
-              thumb = thumb.replaceAll('/upload/', '/upload/so_0/');
+            String thumb = data['thumbnailUri'] as String? ?? '';
+            if (thumb.isEmpty) {
+              thumb = data['thumbnailUrl'] as String? ?? '';
             }
-          } else {
-            thumb = 'https://picsum.photos/200/300'; // Dự phòng
-          }
-        }
+            if (thumb.isEmpty) {
+              final videoUri = data['videoUri'] as String? ?? '';
+              if (videoUri.contains('cloudinary.com')) {
+                thumb = videoUri.replaceAll('.mp4', '.jpg');
+                if (thumb.contains('/upload/')) {
+                  thumb = thumb.replaceAll('/upload/', '/upload/so_0/');
+                }
+              } else {
+                thumb = 'https://picsum.photos/200/300'; // Dự phòng
+              }
+            }
 
-        final vId = data['videoId'] as String? ?? '';
-        list.add(VideoSummaryModel(
-          videoId: vId.isNotEmpty ? vId : doc.id,
-          thumbnailUri: thumb,
-          watchCount: (data['watchCount'] as num?)?.toInt() ?? 0,
-        ));
-      }
-      return list;
-    });
+            final vId = data['videoId'] as String? ?? '';
+            list.add(
+              VideoSummaryModel(
+                videoId: vId.isNotEmpty ? vId : doc.id,
+                thumbnailUri: thumb,
+                watchCount: (data['watchCount'] as num?)?.toInt() ?? 0,
+              ),
+            );
+          }
+          return list;
+        });
   }
 
   /// Kiểm tra trạng thái follow
@@ -307,10 +308,7 @@ class ProfileRepository {
     await _firestore
         .collection(AppConstants.profilesCollection)
         .doc(uid)
-        .update({
-      'followers': followersCount,
-      'following': followingCount,
-    });
+        .update({'followers': followersCount, 'following': followingCount});
   }
 
   /// Lấy danh sách Followers (người theo dõi)
@@ -322,7 +320,10 @@ class ProfileRepository {
         .collection('followers')
         .get();
 
-    final ids = snap.docs.map((doc) => doc.id).where((id) => id != 'dump').toList();
+    final ids = snap.docs
+        .map((doc) => doc.id)
+        .where((id) => id != 'dump')
+        .toList();
     if (ids.isEmpty) return [];
 
     final profiles = <ProfileModel>[];
@@ -332,7 +333,9 @@ class ProfileRepository {
           .collection(AppConstants.profilesCollection)
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
-      profiles.addAll(querySnap.docs.map((doc) => ProfileModel.fromMap(doc.data())));
+      profiles.addAll(
+        querySnap.docs.map((doc) => ProfileModel.fromMap(doc.data())),
+      );
     }
     return profiles;
   }
@@ -346,7 +349,10 @@ class ProfileRepository {
         .collection('following')
         .get();
 
-    final ids = snap.docs.map((doc) => doc.id).where((id) => id != 'dump').toList();
+    final ids = snap.docs
+        .map((doc) => doc.id)
+        .where((id) => id != 'dump')
+        .toList();
     if (ids.isEmpty) return [];
 
     final profiles = <ProfileModel>[];
@@ -356,7 +362,9 @@ class ProfileRepository {
           .collection(AppConstants.profilesCollection)
           .where(FieldPath.documentId, whereIn: chunk)
           .get();
-      profiles.addAll(querySnap.docs.map((doc) => ProfileModel.fromMap(doc.data())));
+      profiles.addAll(
+        querySnap.docs.map((doc) => ProfileModel.fromMap(doc.data())),
+      );
     }
     return profiles;
   }
