@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../video_feed/repositories/video_repository.dart';
 import '../models/comment_model.dart';
 
 /// Repository quản lý bình luận trên Firestore & Realtime Database
@@ -82,6 +83,18 @@ class CommentRepository {
         .update({
       'totalComments': FieldValue.increment(1),
     });
+
+    // 5. Ghi nhận sở thích (Comment weight: 3)
+    final videoDoc = await _firestore.collection(AppConstants.videosCollection).doc(comment.videoId).get();
+    if (videoDoc.exists) {
+      final hashtags = (videoDoc.data()?['hashtags'] as List<dynamic>?)?.map((e) => e.toString()).toList();
+      final repo = VideoRepository(firestore: _firestore, database: _database);
+      await repo.recordInterest(
+        tags: hashtags,
+        currentUid: comment.authorId,
+        weight: 3,
+      );
+    }
   }
 
   /// Gửi thông báo bình luận qua Realtime Database

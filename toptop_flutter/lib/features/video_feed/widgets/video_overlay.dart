@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/time_utils.dart';
 import '../../profile/providers/profile_provider.dart';
 import '../models/video_model.dart';
+import '../providers/video_provider.dart';
 
 /// Widget hiển thị thông tin đè lên Video (Tên tác giả, mô tả, hashtag, nhạc)
 /// Port từ VideoAdapter.VideoViewHolder.updateMetadataUI() — Premium upgrade
@@ -112,18 +114,33 @@ class _VideoOverlayState extends ConsumerState<VideoOverlay>
               const SizedBox(height: 10),
             ],
 
-            // Tên tác giả
-            Text(
-              username.isNotEmpty ? '@$username' : '@User',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-                letterSpacing: 0.3,
-                shadows: [
-                  Shadow(blurRadius: 6, color: Colors.black87, offset: Offset(0, 1)),
+            // Tên tác giả và thời gian (nếu ở tab Following)
+            Row(
+              children: [
+                Text(
+                  username.isNotEmpty ? '@$username' : '@User',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    letterSpacing: 0.3,
+                    shadows: [
+                      Shadow(blurRadius: 6, color: Colors.black87, offset: Offset(0, 1)),
+                    ],
+                  ),
+                ),
+                if (ref.watch(homeTabProvider) == HomeTab.following) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    '• ${TimeUtils.formatRelativeTime(widget.video.timestamp)}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
-              ),
+              ],
             ),
             const SizedBox(height: 8),
 

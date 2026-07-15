@@ -1,5 +1,6 @@
 // ignore_for_file: prefer_initializing_formals
 
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 
@@ -19,38 +20,283 @@ class VideoRepository {
   })  : _firestore = firestore,
         _database = database;
 
-  /// Stream danh sách video được đề xuất (ưu tiên chiến dịch Đà Lạt lên trước)
-  /// Port từ VideoFragment.loadVideos() và RecommendationHelper
-  Stream<List<VideoModel>> watchRecommendedVideos() {
-    return _firestore
+  /// Lấy danh sách video được đề xuất (phân tích dựa trên tương tác, watch time và lịch sử tìm kiếm)
+  Future<List<VideoModel>> getRecommendedVideos(String? currentUid) async {
+    final snapshot = await _firestore
         .collection(AppConstants.videosCollection)
         .orderBy('timestamp', descending: true)
-        .limit(AppConstants.videoFeedLimit)
-        .snapshots()
-        .map((snapshot) {
-      final list = snapshot.docs
-          .map((doc) => VideoModel.fromMap(doc.data(), doc.id))
-          .where((video) =>
-              video.moderationStatus != 'rejected' &&
-              video.moderationStatus != 'pending')
+        .limit(500) // Tăng limit để đảm bảo có đủ video
+        .get();
+
+    final allVideos = snapshot.docs
+        .map((doc) => VideoModel.fromMap(doc.data(), doc.id))
+        .where((v) => v.moderationStatus != 'rejected') // Hiển thị cả pending và approved
+        .toList();
+
+    // 1. NGƯỜI DÙNG CHƯA ĐĂNG NHẬP: Trả về ngẫu nhiên để test và đa dạng
+    if (currentUid == null) {
+      allVideos.shuffle();
+      return allVideos.take(AppConstants.videoFeedLimit).toList();
+    }
+
+    // 2. NGƯỜI DÙNG ĐÃ ĐĂNG NHẬP
+    // 2.1. Lấy lịch sử video đã xem
+    final watchedIds = await getWatchedVideoIds(currentUid);
+
+    // 2.2. Lấy sở thích người dùng (top tags)
+    final topInterests = await getTopInterests(currentUid, limit: 15);
+
+    // 2.3. Lọc bỏ video đã xem (chỉ áp dụng cho For You để luôn mới mẻ)
+    final unwatchedVideos = allVideos
+        .where((v) => !watchedIds.contains(v.videoId))
+        .toList();
+
+    // TÀI KHOẢN MỚI (Chưa xem gì hoặc chưa có sở thích)
+    if (watchedIds.isEmpty || topInterests.isEmpty) {
+      allVideos.shuffle(); // Trộn ngẫu nhiên để đề xuất đa dạng ban đầu
+      return allVideos.take(AppConstants.videoFeedLimit).toList();
+    }
+
+    // TÀI KHOẢN CÓ SỞ THÍCH: Rank theo thuật toán
+    // Nếu hết video chưa xem, trộn ngẫu nhiên tất cả video cũ để lặp lại vô tận
+    if (unwatchedVideos.isEmpty) {
+      allVideos.shuffle();
+      return allVideos.take(AppConstants.videoFeedLimit).toList();
+    }
+
+    // 4. Tính toán điểm số và sắp xếp
+    return _rankVideos(unwatchedVideos, topInterests);
+  }
+
+  /// Lấy danh sách video thuộc Lâm Đồng dựa trên thuật toán 5 bước (ASR, OCR, NER, Landmark, GPS)
+  Future<List<VideoModel>> getLamDongVideos(String? currentUid) async {
+    final snapshot = await _firestore
+        .collection(AppConstants.videosCollection)
+        .orderBy('timestamp', descending: true)
+        .limit(400) // Tăng limit cho mục Lâm Đồng
+        .get();
+
+    final allVideos = snapshot.docs
+        .map((doc) => VideoModel.fromMap(doc.data(), doc.id))
+        .where((v) => v.moderationStatus != 'rejected')
+        .toList();
+
+    // Chấm điểm từng video theo thuật toán 5 bước
+    final lamDongVideos = allVideos.where((video) {
+      return _calculateLamDongScore(video) >= 30; // Hạ thấp ngưỡng để dễ tìm thấy video hơn
+    }).toList();
+
+    // KHÔNG lọc bỏ video đã xem ở mục Lâm Đồng theo yêu cầu
+    if (currentUid == null) {
+      return _sortVideos(lamDongVideos);
+    }
+
+    final topInterests = await getTopInterests(currentUid, limit: 10);
+    return _rankVideos(lamDongVideos, topInterests);
+  }
+
+  /// Thuật toán 5 bước chấm điểm video về Lâm Đồng
+  double _calculateLamDongScore(VideoModel video) {
+    double score = 0;
+
+    // Bước 1 & 2: Gom thông tin văn bản (Giả lập OCR, ASR từ description/hashtags nếu chưa có trường riêng)
+    final String caption = video.description.toLowerCase();
+    final List<String> hashtags = video.hashtags.map((h) => h.toLowerCase()).toList();
+
+    // Giả lập dữ liệu ASR/OCR (trong thực tế sẽ lấy từ metadata của video)
+    // Nếu trong description có dấu hiệu của hội thoại hoặc chữ trên màn hình
+    final String combinedText = '$caption ${hashtags.join(' ')} ${video.location ?? ''}'.toLowerCase();
+
+    // Bước 3: Nhận diện địa danh ( NER / Dictionary Lookup)
+    const lamDongPlaces = [
+      // Tỉnh & Thành phố
+      'lâm đồng', 'lamdong', 'đà lạt', 'dalat', 'bảo lộc', 'baoloc',
+      // Phường tại Đà Lạt
+      'Xuân Hương','xuanhuong','Cam Ly','camly','Lâm Viên','lamvien','Xuân Trường','xuantruong','lang biang', 'langbiang',
+      // Huyện & Xã (Đức Trọng)
+      'đức trọng', 'ductrong', 'liên nghĩa', 'liennghia', 'hiệp an', 'hiepan',
+      'hiệp thạnh', 'hiepthanh', 'liên hiệp', 'lienhiep', 'phú hội', 'phuhoi',
+      'tân hội', 'tanhoi', 'tân thành', 'tanthanh', 'bình thạnh', 'binhthanh',
+      'n’thôn hạ', 'nthonha', 'ninh gia', 'ninhgia', 'ninh loan', 'ninhloan',
+      'đà loan', 'daloan', 'tà hine', 'tahine', 'tà năng', 'tanang', 'đa quyn', 'daquyn',
+      // Đơn Dương
+      'đơn dương', 'don duong', 'đonduong', 'ka đô', 'kado', 'quảng lập', 'quanglap',
+      'd\'ran', 'dran', 'thạnh mỹ', 'thanhmy', 'đạ ròn', 'daron', 'tu tra', 'tutra',
+      'lạc lâm', 'laclam', 'ka đơn', 'kadon', 'pró', 'pro', 'lạc xuân', 'lacxuan',
+      // Lâm Hà
+      'lâm hà', 'lam ha', 'nam ban', 'namban', 'đinh văn', 'dinhvan', 'phi tô', 'phito',
+      'nam hà', 'namha', 'gia lâm', 'gialam', 'đông thanh', 'dongthanh',
+      // Di Linh
+      'di linh', 'dilinh', 'gia hiệp', 'giahiep', 'hòa ninh', 'hoaninh', 'đinh trang thượng',
+      'bảo thuận', 'baothuan', 'sơn điền', 'sondien',
+      // Đam Rông & các huyện khác
+      'đam rông', 'damrong', 'đạ huoai', 'dahuoai', 'đạ tẻh', 'dateh', 'cát tiên', 'cattien', 'bảo lâm', 'baolam',
+      // Địa danh nổi tiếng
+      'hồ xuân hương','hoxuanhuong', 'prenn', 'mimosa', 'trại mát','traimat', 'cầu đất','caudat',
+      'vạn thành','vanthanh', 'tà nung','tanung', 'phi nôm','phinom', 'ka đô','kado'
+    ];
+
+    bool hasPlaceMatch = false;
+    for (final place in lamDongPlaces) {
+      if (combinedText.contains(place)) {
+        hasPlaceMatch = true;
+        break;
+      }
+    }
+    if (hasPlaceMatch) score += 50;
+
+    // Các hashtag huyện lỵ đặc trưng (+40 điểm)
+    final districtTags = [
+      'ductrong', 'lienneghia', 'dalat', 'lamdong', 'dilinh', 'baoloc',
+      'donduong', 'lacduong', 'damrong', 'cattien', 'baolam'
+    ];
+    if (hashtags.any((h) {
+      final cleanH = h.replaceAll('#', '').toLowerCase();
+      return districtTags.contains(cleanH);
+    })) {
+      score += 40;
+    }
+
+    // Bước 5: Chấm điểm theo điều kiện
+
+    // 1. Caption có "Đà Lạt" hoặc "Đức Trọng" (+40)
+    if (caption.contains('đà lạt') || caption.contains('đức trọng') || caption.contains('liên nghĩa')) {
+      score += 40;
+    }
+
+    // 2. Hashtag #lamdong (+30)
+    if (hashtags.any((h) => h.contains('lamdong') || h.contains('lam-dong'))) score += 30;
+
+    // 2b. Hashtag #langbiang (+50)
+    if (hashtags.any((h) => h.contains('langbiang') || h.contains('lang-biang'))) score += 50;
+
+    // 3. Nhắc đến địa danh không dấu trong text (+35)
+    if (combinedText.contains('duc trong') || combinedText.contains('lien nghia') || combinedText.contains('bao loc')) {
+      score += 35;
+    }
+
+    // 4. OCR thấy "Đà Lạt" (+40) - Giả lập
+    if (combinedText.contains('welcome to da lat') || combinedText.contains('da lat')) score += 40;
+
+    // 5. Landmark recognition (+50) - Giả lập dựa trên các địa danh nổi tiếng
+    if (combinedText.contains('quảng trường lâm viên') ||
+        combinedText.contains('hồ xuân hương') ||
+        combinedText.contains('lang biang')) {
+      score += 50;
+    }
+
+    // 6. GPS/video location = Lâm Đồng (+100)
+    if (video.location?.toLowerCase().contains('da lat') == true ||
+        video.location?.toLowerCase().contains('lâm đồng') == true) {
+      score += 100;
+    }
+
+    return score;
+  }
+
+  /// Lấy danh sách video từ những người đang theo dõi, xếp mới nhất lên đầu
+  /// Không lọc bỏ video đã xem theo yêu cầu
+  Future<List<VideoModel>> getFollowingVideos(String currentUid) async {
+    if (currentUid.isEmpty) return [];
+
+    try {
+      // 1. Lấy danh sách UID đang follow
+      final followingSnap = await _firestore
+          .collection(AppConstants.profilesCollection)
+          .doc(currentUid)
+          .collection('following')
+          .get();
+
+      final followingIds = followingSnap.docs
+          .map((doc) => doc.id)
+          .where((id) => id != 'dump')
           .toList();
 
-      // Sắp xếp ưu tiên các video thuộc chiến dịch Đà Lạt (theo hashtags hoặc location)
-      list.sort((a, b) {
-        final aIsCampaign = a.location == 'Da Lat' ||
-            a.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
-                .contains(tag.toLowerCase().replaceAll('#', '')));
-        final bIsCampaign = b.location == 'Da Lat' ||
-            b.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
-                .contains(tag.toLowerCase().replaceAll('#', '')));
+      if (followingIds.isEmpty) {
+        print('DEBUG: No following IDs found for user $currentUid');
+        return [];
+      }
+      print('DEBUG: Found following IDs: $followingIds');
 
-        if (aIsCampaign && !bIsCampaign) return -1;
-        if (!aIsCampaign && bIsCampaign) return 1;
-        return b.timestamp.compareTo(a.timestamp);
-      });
+      // 2. Lấy video từ những người này (Firestore whereIn giới hạn 30 items)
+      // BỎ orderBy ĐỂ TRÁNH YÊU CẦU INDEX PHỨC TẠP
+      final snapshot = await _firestore
+          .collection(AppConstants.videosCollection)
+          .where('authorId', whereIn: followingIds.take(30).toList())
+          .limit(100)
+          .get();
 
-      return list;
+      print('DEBUG: Found ${snapshot.docs.length} videos from following');
+
+      final videos = snapshot.docs
+          .map((doc) => VideoModel.fromMap(doc.data(), doc.id))
+          .where((v) => v.moderationStatus != 'rejected')
+          .toList();
+
+      // Sắp xếp thủ công in-memory theo thời gian giảm dần (mới nhất lên đầu)
+      videos.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      return videos;
+    } catch (e) {
+      print('DEBUG: Error in getFollowingVideos: $e');
+      return [];
+    }
+  }
+
+  List<VideoModel> _sortVideos(List<VideoModel> list) {
+    final sorted = List<VideoModel>.from(list);
+    sorted.sort((a, b) {
+      final aIsCampaign = a.location == 'Da Lat' ||
+          a.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+              .contains(tag.toLowerCase().replaceAll('#', '')));
+      final bIsCampaign = b.location == 'Da Lat' ||
+          b.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+              .contains(tag.toLowerCase().replaceAll('#', '')));
+
+      if (aIsCampaign && !bIsCampaign) return -1;
+      if (!aIsCampaign && bIsCampaign) return 1;
+      return b.timestamp.compareTo(a.timestamp);
     });
+    return sorted;
+  }
+
+  List<VideoModel> _rankVideos(List<VideoModel> videos, List<String> topInterests) {
+    final ranked = List<VideoModel>.from(videos);
+    ranked.sort((a, b) {
+      double scoreA = _calculateVideoScore(a, topInterests);
+      double scoreB = _calculateVideoScore(b, topInterests);
+      return scoreB.compareTo(scoreA);
+    });
+    return ranked.take(AppConstants.videoFeedLimit).toList();
+  }
+
+  double _calculateVideoScore(VideoModel video, List<String> topInterests) {
+    double score = 0;
+
+    // 1. Tag Match (Hợp sở thích)
+    for (final tag in video.hashtags) {
+      if (topInterests.contains(tag.toLowerCase().replaceAll('#', ''))) {
+        score += 10.0;
+      }
+    }
+
+    // 2. Recency (Độ mới) - Giảm dần theo thời gian (Max 5 điểm)
+    final ageHours = DateTime.now().difference(
+      DateTime.fromMillisecondsSinceEpoch(video.timestamp)
+    ).inHours;
+    score += math.max(0, 5.0 - (ageHours / 24.0));
+
+    // 3. Popularity (Độ hot)
+    score += (video.watchCount / 1000.0).clamp(0.0, 5.0);
+    score += (video.totalLikes / 100.0).clamp(0.0, 5.0);
+
+    // 4. Campaign priority (Đà Lạt)
+    final isCampaign = video.location == 'Da Lat' ||
+        video.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
+            .contains(tag.toLowerCase().replaceAll('#', '')));
+    if (isCampaign) score += 3.0;
+
+    return score;
   }
 
   /// Bật/Tắt thích video (Like/Unlike)
@@ -82,7 +328,18 @@ class VideoRepository {
         'likes': FieldValue.increment(1),
       });
 
-      // 3. Gửi thông báo Like qua RTDB
+      // 3. Ghi nhận sở thích (Like weight: 5)
+      final videoDoc = await videoRef.get();
+      if (videoDoc.exists) {
+        final hashtags = (videoDoc.data()?['hashtags'] as List<dynamic>?)?.map((e) => e.toString()).toList();
+        await recordInterest(
+          tags: hashtags,
+          currentUid: currentUid,
+          weight: 5,
+        );
+      }
+
+      // 4. Gửi thông báo Like qua RTDB
       final notifRef = _database
           .ref(AppConstants.notificationsPath)
           .child(authorId)
@@ -136,17 +393,25 @@ class VideoRepository {
         .set({'watchCount': FieldValue.increment(1)}, SetOptions(merge: true));
   }
 
-  /// Ghi nhận sở thích xem video thông qua phân tách hashtag
-  /// Port từ RecommendationHelper.recordInterest()
+  /// Ghi nhận sở thích xem video thông qua phân tách hashtag hoặc tags trực tiếp
+  /// weight: trọng số ảnh hưởng (Like: 5, Comment: 3, Search: 2, Watch: 1)
   Future<void> recordInterest({
-    required String description,
+    String? description,
+    List<String>? tags,
     required String currentUid,
+    int weight = 1,
   }) async {
-    if (description.isEmpty || currentUid.isEmpty) return;
+    if (currentUid.isEmpty) return;
 
-    final regex = RegExp(r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)');
-    final matches = regex.allMatches(description);
-    final hashtags = matches.map((m) => m.group(1)!.toLowerCase()).toList();
+    final Set<String> hashtags = {};
+    if (description != null && description.isNotEmpty) {
+      final regex = RegExp(r'#([A-Za-z0-9_\u00C0-\u1EF9-]+)');
+      final matches = regex.allMatches(description);
+      hashtags.addAll(matches.map((m) => m.group(1)!.toLowerCase()));
+    }
+    if (tags != null) {
+      hashtags.addAll(tags.map((t) => t.toLowerCase().replaceAll('#', '')));
+    }
 
     if (hashtags.isEmpty) return;
 
@@ -161,7 +426,7 @@ class VideoRepository {
       batch.set(
         tagRef,
         {
-          'count': FieldValue.increment(1),
+          'count': FieldValue.increment(weight),
           'lastUpdated': DateTime.now().millisecondsSinceEpoch,
         },
         SetOptions(merge: true),
@@ -171,9 +436,8 @@ class VideoRepository {
     await batch.commit();
   }
 
-  /// Lấy danh sách tags người dùng quan tâm nhất (giới hạn 3)
-  /// Port từ RecommendationHelper.getTopInterests()
-  Future<List<String>> getTopInterests(String currentUid) async {
+  /// Lấy danh sách tags người dùng quan tâm nhất
+  Future<List<String>> getTopInterests(String currentUid, {int limit = 3}) async {
     if (currentUid.isEmpty) return [];
 
     final snapshot = await _firestore
@@ -181,7 +445,35 @@ class VideoRepository {
         .doc(currentUid)
         .collection('tags')
         .orderBy('count', descending: true)
-        .limit(3)
+        .limit(limit)
+        .get();
+
+    return snapshot.docs.map((doc) => doc.id).toList();
+  }
+
+  /// Đánh dấu video đã xem
+  Future<void> markVideoAsWatched(String userId, String videoId) async {
+    if (userId.isEmpty || videoId.isEmpty) return;
+
+    await _firestore
+        .collection(AppConstants.profilesCollection)
+        .doc(userId)
+        .collection('watched_videos')
+        .doc(videoId)
+        .set({
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// Lấy danh sách ID video đã xem
+  Future<List<String>> getWatchedVideoIds(String userId) async {
+    if (userId.isEmpty) return [];
+
+    final snapshot = await _firestore
+        .collection(AppConstants.profilesCollection)
+        .doc(userId)
+        .collection('watched_videos')
+        .limit(500)
         .get();
 
     return snapshot.docs.map((doc) => doc.id).toList();
