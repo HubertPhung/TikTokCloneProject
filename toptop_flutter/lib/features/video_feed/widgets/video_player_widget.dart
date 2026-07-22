@@ -44,6 +44,8 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
   VideoPlayerController? _controller;
   bool _isVisible = false;
   bool _hasLoggedWatch = false;
+  bool _hasLoggedComplete = false;
+  DateTime? _startTime;
   final List<FloatingHeart> _hearts = [];
 
   @override
@@ -74,6 +76,7 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
         
         if (_isVisible) {
           _controller!.play();
+          _startTime = DateTime.now();
           _trackWatch();
         }
         setState(() {});
@@ -101,7 +104,6 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
     _hasLoggedWatch = true;
 
     final repo = ref.read(videoRepositoryProvider);
-    final user = ref.read(currentUserProvider);
 
     // 1. Tăng watch count
     repo.incrementWatchCount(
@@ -109,20 +111,53 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
       authorId: widget.video.authorId,
     );
 
-    // 2. Ghi lại sở thích nếu đã đăng nhập
-    if (user != null) {
-      repo.recordInterest(
-        description: widget.video.description,
-        currentUid: user.uid,
-      );
-    }
-
-    // 3. Tăng lượt xem cho chiến dịch quảng bá Đà Lạt nếu hợp lệ
+    // 2. Tăng lượt xem cho chiến dịch quảng bá Đà Lạt nếu hợp lệ
     final isDalatCampaign = widget.video.location == 'Da Lat' ||
-        widget.video.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadat']
+        widget.video.hashtags.any((tag) => const ['dalat', 'dalatdulich', 'khamphadalat']
             .contains(tag.toLowerCase().replaceAll('#', '')));
     if (isDalatCampaign) {
       repo.recordCampaignView(widget.video.videoId);
+    }
+  }
+
+  /// Kiểm tra và ghi nhận xem lâu hoặc hoàn thành
+  void _checkWatchProgress() {
+    if (_controller == null || !mounted || !_isVisible) return;
+
+    final duration = _controller!.value.duration;
+    final position = _controller!.value.position;
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    // 1. Xem trên 3 giây (Đánh dấu đã xem và ghi nhận thêm interest)
+    if (_startTime != null) {
+      final elapsed = DateTime.now().difference(_startTime!).inSeconds;
+      if (elapsed >= 3) {
+        final repo = ref.read(videoRepositoryProvider);
+        // Đánh dấu đã xem sau 3 giây để tránh ẩn video quá sớm nếu chỉ lướt qua
+        repo.markVideoAsWatched(user.uid, widget.video.videoId);
+
+        repo.recordInterest(
+          tags: widget.video.hashtags,
+          currentUid: user.uid,
+          weight: 1, // Cộng thêm 1 vào interest
+        );
+        _startTime = null; // Reset để không log lại mốc 3s
+      }
+    }
+
+    // 2. Xem gần hết (90%) - Ghi nhận thêm interest
+    if (duration.inMilliseconds > 0 && !_hasLoggedComplete) {
+      final progress = position.inMilliseconds / duration.inMilliseconds;
+      if (progress >= 0.9) {
+        _hasLoggedComplete = true;
+        final repo = ref.read(videoRepositoryProvider);
+        repo.recordInterest(
+          tags: widget.video.hashtags,
+          currentUid: user.uid,
+          weight: 2, // Cộng thêm interest vì xem hết
+        );
+      }
     }
   }
 
@@ -213,11 +248,13 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
               _initController();
             } else if (_controller!.value.isInitialized) {
               _controller!.play();
+              _startTime = DateTime.now();
               _trackWatch();
             }
           } else {
             if (_controller != null && _controller!.value.isInitialized) {
               _controller!.pause();
+              _checkWatchProgress();
             }
           }
         }

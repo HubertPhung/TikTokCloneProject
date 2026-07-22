@@ -54,14 +54,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen>
     if (cleanText.isEmpty) return;
 
     ref.read(searchQueryProvider.notifier).state = cleanText;
-    ref.read(searchHistoryProvider.notifier).addQuery(cleanText);
+    ref.read(searchHistoryProvider.notifier).addQuery(cleanText, ref);
     _focusNode.unfocus();
   }
 
   void _onTagSelect(String tag) {
     _searchController.text = tag;
     ref.read(searchQueryProvider.notifier).state = tag;
-    ref.read(searchHistoryProvider.notifier).addQuery(tag);
+    ref.read(searchHistoryProvider.notifier).addQuery(tag, ref);
     _focusNode.unfocus();
   }
 

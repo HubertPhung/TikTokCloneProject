@@ -16,10 +16,30 @@ final videoRepositoryProvider = Provider<VideoRepository>((ref) {
   );
 });
 
-/// StreamProvider cung cấp danh sách video đề xuất
-final videoFeedStreamProvider = StreamProvider<List<VideoModel>>((ref) {
-  return ref.watch(videoRepositoryProvider).watchRecommendedVideos();
+/// FutureProvider cung cấp danh sách video đề xuất
+final videoFeedProvider = FutureProvider<List<VideoModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  return ref.watch(videoRepositoryProvider).getRecommendedVideos(user?.uid);
 });
+
+/// FutureProvider cung cấp danh sách video Lâm Đồng
+final lamDongVideoFeedProvider = FutureProvider<List<VideoModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  return ref.watch(videoRepositoryProvider).getLamDongVideos(user?.uid);
+});
+
+/// FutureProvider cung cấp danh sách video từ những người đang follow
+final followingVideoFeedProvider = FutureProvider<List<VideoModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+  return ref.watch(videoRepositoryProvider).getFollowingVideos(user.uid);
+});
+
+/// Enum cho các tab ở trang chủ
+enum HomeTab { following, forYou, lamDong }
+
+/// StateProvider quản lý tab đang chọn ở trang chủ
+final homeTabProvider = StateProvider<HomeTab>((ref) => HomeTab.forYou);
 
 /// Provider tải thông tin tác giả video
 final videoAuthorProfileProvider =
@@ -53,7 +73,23 @@ final adsStreamProvider = StreamProvider<List<AdModel>>((ref) {
 
 /// Provider kết hợp video thường và quảng cáo tự động
 final homeFeedProvider = Provider<AsyncValue<List<FeedItem>>>((ref) {
-  final videosAsync = ref.watch(videoFeedStreamProvider);
+  final selectedTab = ref.watch(homeTabProvider);
+
+  AsyncValue<List<VideoModel>> videosAsync;
+
+  switch (selectedTab) {
+    case HomeTab.lamDong:
+      videosAsync = ref.watch(lamDongVideoFeedProvider);
+      break;
+    case HomeTab.following:
+      videosAsync = ref.watch(followingVideoFeedProvider);
+      break;
+    case HomeTab.forYou:
+    default:
+      videosAsync = ref.watch(videoFeedProvider);
+      break;
+  }
+
   final adsAsync = ref.watch(adsStreamProvider);
 
   return videosAsync.when(

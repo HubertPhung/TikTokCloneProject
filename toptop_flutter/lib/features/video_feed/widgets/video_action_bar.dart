@@ -404,6 +404,15 @@ class VideoActionBar extends ConsumerWidget {
                       label: 'Gửi tin nhắn',
                       color: Colors.blue,
                       onTap: () {
+                        // Ghi nhận sở thích (Share weight: 4)
+                        if (currentUser != null) {
+                          ref.read(videoRepositoryProvider).recordInterest(
+                            tags: video.hashtags,
+                            currentUid: currentUser.uid,
+                            weight: 4,
+                          );
+                        }
+
                         Navigator.pop(context); // Đóng share sheet
                         showModalBottomSheet(
                           context: context,

@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/firebase_providers.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../auth/models/profile_model.dart';
 import '../../video_feed/models/video_model.dart';
+import '../../video_feed/providers/video_provider.dart';
 import '../repositories/search_repository.dart';
 
 /// Provider cho SearchRepository
@@ -33,7 +35,7 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
   }
 
   /// Thêm một từ khóa tìm kiếm mới vào lịch sử
-  Future<void> addQuery(String query) async {
+  Future<void> addQuery(String query, WidgetRef? ref) async {
     final cleanQuery = query.trim();
     if (cleanQuery.isEmpty) return;
 
@@ -48,6 +50,18 @@ class SearchHistoryNotifier extends StateNotifier<List<String>> {
     state = newList;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_prefsKey, newList);
+
+    // Ghi nhận sở thích từ tìm kiếm (Search weight: 2)
+    if (ref != null) {
+      final user = ref.read(currentUserProvider);
+      if (user != null) {
+        ref.read(videoRepositoryProvider).recordInterest(
+          tags: [cleanQuery], // Coi từ khóa là 1 tag tiềm năng
+          currentUid: user.uid,
+          weight: 2,
+        );
+      }
+    }
   }
 
   /// Xóa toàn bộ lịch sử tìm kiếm

@@ -143,7 +143,7 @@ class UploadRepository {
       'totalComments': 0,
       'watchCount': 0,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'moderationStatus': 'pending', // Mặc định chờ kiểm duyệt
+      'moderationStatus': 'approved', // Cho phép hiển thị ngay lập tức
       'hashtags': hashtags,
       'location': location,
       'allowDownload': allowDownload,

@@ -427,12 +427,13 @@ class _VideoDescriptionScreenState
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primaryColor),
             )
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView(
+          : Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Hộp nội dung và xem trước
                         Row(
@@ -442,16 +443,15 @@ class _VideoDescriptionScreenState
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
-                                width: 100,
-                                height: 150,
-                                color: Colors.grey[900],
+                                width: 110,
+                                height: 160,
+                                color: Colors.white.withValues(alpha: 0.1),
                                 child: _isEditMode
                                     ? (_previewUrl.isNotEmpty
                                           ? CachedNetworkImage(
                                               imageUrl: _previewUrl,
                                               fit: BoxFit.cover,
-                                              memCacheWidth:
-                                                  200, // Tối ưu kích thước lưu cache bộ nhớ
+                                              memCacheWidth: 200,
                                               placeholder: (context, url) =>
                                                   const Icon(
                                                     Icons.image,
@@ -481,9 +481,12 @@ class _VideoDescriptionScreenState
                                                 _videoPlayerController!,
                                               ),
                                             )
-                                          : const Icon(
-                                              Icons.play_arrow,
-                                              color: Colors.white24,
+                                          : const Center(
+                                              child: Icon(
+                                                Icons.play_arrow,
+                                                color: Colors.white54,
+                                                size: 30,
+                                              ),
                                             )),
                               ),
                             ),
@@ -496,283 +499,223 @@ class _VideoDescriptionScreenState
                                 focusNode: _focusNode,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 14,
+                                  fontSize: 15,
                                 ),
-                                maxLines: 6,
+                                maxLines: 7,
                                 decoration: const InputDecoration(
                                   hintText:
                                       'Nhập mô tả cho video của bạn ở đây...',
                                   hintStyle: TextStyle(
-                                    color: AppTheme.textHint,
-                                    fontSize: 13,
+                                    color: Colors.white38,
+                                    fontSize: 14,
                                   ),
                                   border: InputBorder.none,
                                   focusedBorder: InputBorder.none,
                                   enabledBorder: InputBorder.none,
+                                  contentPadding: EdgeInsets.zero,
+                                  filled: false,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
                         // Hàng phím hỗ trợ nhập liệu
                         Row(
                           children: [
                             // Nút thêm phím # nhanh
-                            OutlinedButton.icon(
-                              onPressed: _insertHashtagSymbol,
-                              icon: const Icon(
-                                Icons.tag,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Thêm #',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.white24),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
+                            _buildInputHelper(
+                              icon: Icons.tag,
+                              label: 'Hashtag',
+                              onTap: _insertHashtagSymbol,
                             ),
                             const SizedBox(width: 12),
 
                             // Nút gợi ý AI
-                            ElevatedButton.icon(
-                              onPressed: _suggestHashtags,
-                              icon: const Icon(
-                                Icons.auto_awesome,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Gợi ý hashtag AI',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF2B2B2D),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                              ),
+                            _buildInputHelper(
+                              icon: Icons.auto_awesome,
+                              label: 'Gợi ý AI',
+                              onTap: _suggestHashtags,
+                              isPrimary: true,
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 30),
                         // === Cài đặt quyền riêng tư & chiến dịch ===
                         const Text(
                           'Cài đặt quyền riêng tư',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            letterSpacing: 0.3,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // Card container cho privacy switches
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.08),
-                            ),
+                        _buildSettingsGroup([
+                          _buildSwitchTile(
+                            title: 'Cho phép tải xuống',
+                            subtitle: 'Người xem có thể lưu video này',
+                            icon: Icons.download_rounded,
+                            value: _allowDownload,
+                            onChanged: (val) =>
+                                setState(() => _allowDownload = val),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 4,
+                          const Divider(color: Colors.white10, height: 1),
+                          _buildSwitchTile(
+                            title: 'Bảo vệ bản quyền',
+                            subtitle: 'Đánh dấu video là nội dung gốc',
+                            icon: Icons.copyright_rounded,
+                            value: _isCopyrightProtected,
+                            onChanged: (val) =>
+                                setState(() => _isCopyrightProtected = val),
                           ),
-                          child: Column(
-                            children: [
-                              // Cho phép tải xuống
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                activeThumbColor: AppTheme.primaryColor,
-                                activeTrackColor: AppTheme.primaryColor
-                                    .withValues(alpha: 0.4),
-                                title: const Text(
-                                  'Cho phép tải xuống',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                subtitle: const Text(
-                                  'Người xem có thể lưu video này',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                secondary: const Icon(
-                                  Icons.download_rounded,
-                                  color: Colors.white70,
-                                ),
-                                value: _allowDownload,
-                                onChanged: (val) =>
-                                    setState(() => _allowDownload = val),
-                              ),
+                        ]),
 
-                              const Divider(color: Colors.white12, height: 1),
-
-                              // Bảo vệ bản quyền
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                activeThumbColor: AppTheme.primaryColor,
-                                activeTrackColor: AppTheme.primaryColor
-                                    .withValues(alpha: 0.4),
-                                title: const Text(
-                                  'Bảo vệ bản quyền',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                subtitle: const Text(
-                                  'Đánh dấu video là nội dung gốc, được bảo vệ',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                secondary: const Icon(
-                                  Icons.copyright_rounded,
-                                  color: Colors.white70,
-                                ),
-                                value: _isCopyrightProtected,
-                                onChanged: (val) =>
-                                    setState(() => _isCopyrightProtected = val),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 24),
                         const Text(
                           'Chiến dịch quảng bá',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                            letterSpacing: 0.3,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
 
                         // Card container cho campaign
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF4CAF50,
-                            ).withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: const Color(
-                                0xFF4CAF50,
-                              ).withValues(alpha: 0.15),
-                            ),
+                        _buildSettingsGroup([
+                          _buildSwitchTile(
+                            title: '🌲 Đà Lạt Trong Tôi',
+                            subtitle: 'Tham gia chiến dịch để được ưu tiên hiển thị',
+                            icon: Icons.eco_rounded,
+                            iconColor: const Color(0xFF4CAF50),
+                            value: _isDalatCampaign,
+                            onChanged: (val) =>
+                                setState(() => _isDalatCampaign = val),
+                            activeColor: const Color(0xFF4CAF50),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 4,
-                          ),
-                          child: Column(
-                            children: [
-                              // Chiến dịch Đà Lạt
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                activeThumbColor: const Color(0xFF4CAF50),
-                                activeTrackColor: const Color(
-                                  0xFF4CAF50,
-                                ).withValues(alpha: 0.4),
-                                title: const Text(
-                                  '🌲 Đà Lạt Trong Tôi',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                subtitle: const Text(
-                                  'Tham gia chiến dịch quảng bá du lịch Đà Lạt để video được ưu tiên hiển thị',
-                                  style: TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                secondary: const Icon(
-                                  Icons.eco_rounded,
-                                  color: Color(0xFF4CAF50),
-                                ),
-                                value: _isDalatCampaign,
-                                onChanged: (val) =>
-                                    setState(() => _isDalatCampaign = val),
-                              ),
-                            ],
-                          ),
-                        ),
+                        ], bgColor: const Color(0xFF4CAF50).withValues(alpha: 0.08)),
+
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
+                ),
 
-                  // Nút hành động đăng/cập nhật cuối trang
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Container(
-                        width: double.infinity,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.brandGradient,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.3,
-                              ),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _isEditMode
-                              ? _handleUpdate
-                              : _handlePublish,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                // Nút hành động đăng/cập nhật cuối trang
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: SafeArea(
+                    top: false,
+                    child: Container(
+                      width: double.infinity,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.brandGradient,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
                           ),
-                          child: Text(
-                            _isEditMode ? 'CẬP NHẬT VIDEO' : 'ĐĂNG VIDEO',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isEditMode ? _handleUpdate : _handlePublish,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          _isEditMode ? 'CẬP NHẬT VIDEO' : 'ĐĂNG VIDEO',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+    );
+  }
+
+  Widget _buildInputHelper({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isPrimary = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isPrimary ? const Color(0xFF2B2B2D) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: isPrimary ? null : Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup(List<Widget> children, {Color? bgColor}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor ?? Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    Color? iconColor,
+    Color? activeColor,
+  }) {
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      activeColor: activeColor ?? AppTheme.primaryColor,
+      title: Text(
+        title,
+        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
+      ),
+      secondary: Icon(icon, color: iconColor ?? Colors.white70),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }
