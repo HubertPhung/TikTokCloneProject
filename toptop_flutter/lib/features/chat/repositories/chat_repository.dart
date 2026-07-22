@@ -47,7 +47,7 @@ class ChatRepository {
         'message': message,
         'timestamp': timestamp,
         'type': type,
-        'metadata': ?metadata,
+        'metadata': metadata,
       };
 
       // Chuẩn bị cập nhật đa điểm (multi-path updates)
@@ -99,18 +99,50 @@ class ChatRepository {
     required String senderId,
     required String receiverId,
     required String videoId,
+    String? caption,
+    bool isGroup = false,
     Map<String, dynamic>? videoMeta,
   }) async {
-    await sendMessage(
-      senderId: senderId,
-      receiverId: receiverId,
-      message: 'Đã chia sẻ một video',
-      type: 'video_share',
-      metadata: {
-        'videoId': videoId,
-        ...?videoMeta,
-      },
-    );
+    final messageText = caption != null && caption.isNotEmpty 
+        ? caption 
+        : 'Đã chia sẻ một video';
+
+    if (isGroup) {
+      // 1. Gửi vào Firestore cho nhóm
+      await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(receiverId)
+          .collection('messages')
+          .add({
+        'senderId': senderId,
+        'message': messageText,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'type': 'video_share',
+        'metadata': {
+          'videoId': videoId,
+          ...?videoMeta,
+        },
+        'seenBy': {senderId: DateTime.now().millisecondsSinceEpoch},
+      });
+
+      // 2. Cập nhật lastMessage của nhóm
+      await FirebaseFirestore.instance.collection('chats').doc(receiverId).update({
+        'lastMessage': messageText,
+        'lastMessageAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Gửi vào Realtime Database cho 1-1
+      await sendMessage(
+        senderId: senderId,
+        receiverId: receiverId,
+        message: messageText,
+        type: 'video_share',
+        metadata: {
+          'videoId': videoId,
+          ...?videoMeta,
+        },
+      );
+    }
   }
 
   /// Stream danh sách tin nhắn trong một cuộc trò chuyện
@@ -167,6 +199,7 @@ class ChatRepository {
               'userId': key.toString(),
               'lastMessage': val['lastMessage'] as String? ?? '',
               'timestamp': timestamp,
+              'isPinned': val['isPinned'] ?? false,
             });
           }
         });
@@ -177,6 +210,31 @@ class ChatRepository {
       // Sắp xếp cuộc trò chuyện có tin nhắn mới nhất lên đầu
       list.sort((a, b) => b['timestamp'].compareTo(a['timestamp']));
       return list;
+    });
+  }
+
+  /// Stream danh sách các nhóm chat từ Firestore mà user tham gia
+  Stream<List<Map<String, dynamic>>> watchGroupChats(String userId) {
+    return _firestore
+        .collection('chats')
+        .where('isGroup', isEqualTo: true)
+        .where('memberIds', arrayContains: userId)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        final lastMsgAt = data['lastMessageAt'] as Timestamp?;
+        return {
+          'chatId': doc.id,
+          'title': data['groupName'] ?? 'Nhóm',
+          'avatarUrl': data['avatarUrl'] ?? '',
+          'lastMessage': data['lastMessage'] ?? '',
+          'timestamp': lastMsgAt?.millisecondsSinceEpoch ?? 0,
+          'isGroup': true,
+          'isPinned': data['isPinned'] ?? false,
+          'memberIds': List<String>.from(data['memberIds'] ?? []),
+        };
+      }).toList();
     });
   }
 
@@ -346,6 +404,32 @@ class ChatRepository {
       }
     } catch (e) {
       debugPrint('markMessagesAsSeen error: $e');
+    }
+  }
+
+  /// Bật/Tắt ghim cuộc trò chuyện (Hỗ trợ cả Group và 1-1)
+  Future<void> togglePin({
+    required String chatId,
+    required bool isPinned,
+    required bool isGroup,
+    String? currentUid,
+    String? otherUid,
+  }) async {
+    try {
+      if (isGroup) {
+        // Cập nhật ghim cho nhóm (Firestore)
+        await _firestore.collection('chats').doc(chatId).update({'isPinned': isPinned});
+      } else if (currentUid != null && otherUid != null) {
+        // Cập nhật ghim cho chat 1-1 (Realtime Database)
+        await _database
+            .ref('ChatList')
+            .child(currentUid)
+            .child(otherUid)
+            .update({'isPinned': isPinned});
+      }
+    } catch (e) {
+      debugPrint('togglePin error: $e');
+      rethrow;
     }
   }
 }

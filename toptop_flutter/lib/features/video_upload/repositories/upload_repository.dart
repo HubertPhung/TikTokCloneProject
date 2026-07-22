@@ -90,6 +90,35 @@ class UploadRepository {
     }
   }
 
+  /// Tải ảnh lên Cloudinary
+  Future<String> uploadImageToCloudinary({
+    required XFile file,
+  }) async {
+    final url = Uri.parse(
+      'https://api.cloudinary.com/v1_1/${AppConstants.cloudinaryCloudName}/image/upload',
+    );
+
+    final request = http.MultipartRequest('POST', url);
+    request.fields['upload_preset'] = 'toptopclone';
+
+    final multipartFile = await PlatformMedia.createCloudinaryVideoPart(file);
+    request.files.add(multipartFile);
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final data = response.body;
+      final match = RegExp(r'"secure_url"\s*:\s*"([^"]+)"').firstMatch(data);
+      if (match != null && match.groupCount >= 1) {
+        return match.group(1)!;
+      }
+      throw Exception('Không tìm thấy secure_url trong phản hồi từ Cloudinary.');
+    } else {
+      throw Exception('Tải ảnh thất bại: ${response.statusCode}. ${response.body}');
+    }
+  }
+
   /// Đồng bộ lưu trữ siêu dữ liệu video lên các bảng Firestore tương ứng
   Future<void> saveVideoToFirestore({
     required String videoId,

@@ -1,12 +1,18 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/shimmer_loading.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../models/chat_preview_model.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/active_users_row.dart';
+import '../widgets/chat_list_tile.dart';
+import '../widgets/create_group_bottom_sheet.dart';
+import '../../auth/models/profile_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 /// Màn hình Hộp thư (Danh sách Chat & Active Users)
 /// Port từ InboxFragment.java trong Android project
@@ -52,6 +58,26 @@ class InboxScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          // Nút tạo nhóm mới
+          IconButton(
+            icon: Icon(Icons.group_add_outlined, color: cs.onSurface, size: 26),
+            onPressed: () {
+              final currentUid = ref.read(authStateProvider).valueOrNull?.uid;
+              if (currentUid != null) {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => CreateGroupBottomSheet(
+                    initialFriend: ProfileModel(
+                      userId: '',
+                      username: 'Nhóm mới',
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
           // Nút xem thông báo tương tác với Badge số lượng thông báo mới đè lên chuông
           Consumer(
             builder: (context, ref, child) {
@@ -155,15 +181,34 @@ class InboxScreen extends ConsumerWidget {
                   ),
                   itemBuilder: (context, index) {
                     final conv = conversations[index];
+                    final isGroup = conv['isGroup'] == true;
+                    
+                    if (isGroup) {
+                      return ChatListTile(
+                        chat: ChatPreview(
+                          id: conv['chatId'] as String? ?? '',
+                          title: conv['title'] as String? ?? 'Nhóm',
+                          avatarUrl: conv['avatarUrl'] as String? ?? '',
+                          memberIds: List<String>.from(conv['memberIds'] ?? []),
+                          isGroup: true,
+                          isPinned: conv['isPinned'] == true,
+                          lastMessage: conv['lastMessage'] as String? ?? '',
+                          lastMessageAt: DateTime.fromMillisecondsSinceEpoch(conv['timestamp'] as int? ?? 0),
+                        ),
+                      );
+                    }
+
                     final otherUserId = conv['userId'] as String;
                     final lastMsg = conv['lastMessage'] as String? ?? 'Chưa có tin nhắn';
                     final timestamp = conv['timestamp'] as int;
+                    final isPinned = conv['isPinned'] == true;
 
                     return _ConversationTile(
                       otherUserId: otherUserId,
                       lastMessage: lastMsg,
                       timestamp: timestamp,
                       formatTime: _formatTime(timestamp),
+                      isPinned: isPinned,
                     );
                   },
                 );
@@ -280,12 +325,14 @@ class _ConversationTile extends ConsumerWidget {
   final String lastMessage;
   final int timestamp;
   final String formatTime;
+  final bool isPinned;
 
   const _ConversationTile({
     required this.otherUserId,
     required this.lastMessage,
     required this.timestamp,
     required this.formatTime,
+    this.isPinned = false,
   });
 
   @override
@@ -295,6 +342,7 @@ class _ConversationTile extends ConsumerWidget {
     if (isSystem) {
       return _buildTile(
         context,
+        ref,
         username: 'Hệ thống TopTop',
         avatarUrl: '',
         isOnline: false,
@@ -312,6 +360,7 @@ class _ConversationTile extends ConsumerWidget {
 
         return _buildTile(
           context,
+          ref,
           username: profile.username.isNotEmpty ? profile.username : 'User',
           avatarUrl: profile.avatarUrl,
           isOnline: isOnline,
@@ -324,7 +373,8 @@ class _ConversationTile extends ConsumerWidget {
   }
 
   Widget _buildTile(
-    BuildContext context, {
+    BuildContext context,
+    WidgetRef ref, {
     required String username,
     required String avatarUrl,
     required bool isOnline,
@@ -333,85 +383,18 @@ class _ConversationTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
+    final currentUid = ref.read(authStateProvider).valueOrNull?.uid;
 
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Stack(
-        children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: isSystem 
-                ? const Color(0xFFFE2C55).withValues(alpha: 0.1) 
-                : (isDark ? Colors.grey[800] : Colors.grey[300]),
-            backgroundImage: avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl, maxWidth: 100) : null,
-            child: avatarUrl.isEmpty
-                ? Icon(
-                    isSystem ? Icons.verified_user_rounded : Icons.person,
-                    color: isSystem ? const Color(0xFFFE2C55) : (isDark ? Colors.white : Colors.black54),
-                    size: 28,
-                  )
-                : null,
-          ),
-          if (isOnline)
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: RepaintBoundary(
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: AppTheme.successColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.scaffoldBackgroundColor,
-                      width: 2.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.successColor.withValues(alpha: 0.4),
-                        blurRadius: 4,
-                        spreadRadius: 0.5,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-      title: Text(
-        username,
-        style: TextStyle(
-          color: cs.onSurface,
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4.0),
-        child: Text(
-          lastMessage,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: isDark ? AppTheme.textSecondary : Colors.black54,
-            fontSize: 13,
-          ),
-        ),
-      ),
-      trailing: Text(
-        formatTime,
-        style: TextStyle(
-          color: isDark ? AppTheme.textHint : Colors.grey[600],
-          fontSize: 11,
-        ),
-      ),
-      onTap: () {
-        context.push(
-          '/chat/$otherUserId?name=${Uri.encodeComponent(username)}&avatar=${Uri.encodeComponent(avatarUrl)}',
-        );
-      },
+    final chatPreview = ChatPreview(
+      id: currentUid != null ? ref.read(chatRepositoryProvider).getRoomId(currentUid, otherUserId) : otherUserId,
+      title: username,
+      avatarUrl: avatarUrl,
+      memberIds: currentUid != null ? [currentUid, otherUserId] : [otherUserId],
+      lastMessage: lastMessage,
+      lastMessageAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
+      isPinned: isPinned,
     );
+
+    return ChatListTile(chat: chatPreview);
   }
 }

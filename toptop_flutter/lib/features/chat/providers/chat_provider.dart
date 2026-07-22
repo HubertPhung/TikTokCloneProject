@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/providers/firebase_providers.dart';
+import '../../auth/models/profile_model.dart';
+import '../../profile/providers/profile_provider.dart';
 import '../models/chat_message_model.dart';
 import '../models/notification_model.dart';
 import '../repositories/chat_repository.dart';
@@ -22,17 +24,50 @@ final chatMessagesProvider =
   return ref.watch(chatRepositoryProvider).watchMessages(roomId);
 });
 
-/// StreamProvider theo dõi danh sách các cuộc trò chuyện của user hiện tại
-final chatConversationsProvider =
-    StreamProvider<List<Map<String, dynamic>>>((ref) {
+/// StreamProvider cho 1-1 chats từ RTDB
+final directChatsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   final authState = ref.watch(authStateProvider);
   final currentUid = authState.valueOrNull?.uid;
-
-  if (currentUid == null) {
-    return Stream.value([]);
-  }
-
+  if (currentUid == null) return Stream.value([]);
   return ref.watch(chatRepositoryProvider).watchChatList(currentUid);
+});
+
+/// StreamProvider cho Group chats từ Firestore
+final groupChatsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final currentUid = authState.valueOrNull?.uid;
+  if (currentUid == null) return Stream.value([]);
+  return ref.watch(chatRepositoryProvider).watchGroupChats(currentUid);
+});
+
+/// StreamProvider tổng hợp cả 1-1 và Group chats
+final chatConversationsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  final direct = ref.watch(directChatsProvider);
+  final groups = ref.watch(groupChatsProvider);
+
+  if (direct is AsyncLoading || groups is AsyncLoading) {
+    return const AsyncLoading();
+  }
+  if (direct is AsyncError) return AsyncError(direct.error!, direct.stackTrace ?? StackTrace.empty);
+  if (groups is AsyncError) return AsyncError(groups.error!, groups.stackTrace ?? StackTrace.empty);
+
+  final list = <Map<String, dynamic>>[
+    ...direct.value ?? [],
+    ...groups.value ?? [],
+  ];
+
+  // Sắp xếp: 1. Pinned lên đầu, 2. Theo timestamp giảm dần
+  list.sort((a, b) {
+    final p1 = (a['isPinned'] == true) ? 1 : 0;
+    final p2 = (b['isPinned'] == true) ? 1 : 0;
+    if (p1 != p2) return p2.compareTo(p1);
+
+    final t1 = a['timestamp'] as int? ?? 0;
+    final t2 = b['timestamp'] as int? ?? 0;
+    return t2.compareTo(t1);
+  });
+
+  return AsyncData(list);
 });
 
 /// StreamProvider theo dõi trạng thái online của một user cụ thể
@@ -82,14 +117,26 @@ class UserIdsList {
 
 /// Provider trích xuất danh sách User ID từ các cuộc trò chuyện và ngăn chặn rebuild thừa
 final chatUserIdsProvider = Provider<List<String>>((ref) {
-  final userIdsList = ref.watch(chatConversationsProvider.select((asyncVal) {
-    final ids = asyncVal.maybeWhen(
-      data: (list) => list.map((c) => c['userId'] as String).toList(),
-      orElse: () => const <String>[],
-    );
-    return UserIdsList(ids);
-  }));
-  return userIdsList.ids;
+  final convsAsync = ref.watch(chatConversationsProvider);
+  return convsAsync.maybeWhen(
+    data: (list) {
+      final Set<String> ids = {};
+      final currentUid = ref.read(authStateProvider).valueOrNull?.uid;
+      for (final c in list) {
+        if (c['isGroup'] == true) {
+          final members = c['memberIds'] as List<dynamic>? ?? [];
+          for (final m in members) {
+            if (m is String && m != currentUid) ids.add(m);
+          }
+        } else {
+          final uid = c['userId'] as String?;
+          if (uid != null && uid != currentUid) ids.add(uid);
+        }
+      }
+      return ids.toList();
+    },
+    orElse: () => const <String>[],
+  );
 });
 
 /// StreamProvider theo dõi danh sách User ID đang Online trong danh sách chat
@@ -149,6 +196,45 @@ final activeUsersProvider = StreamProvider<List<String>>((ref) {
   });
 
   return controller.stream;
+});
+
+/// FutureProvider lấy hồ sơ của tất cả người dùng trong danh sách chat (Inbox)
+final inboxProfilesProvider = FutureProvider<List<ProfileModel>>((ref) async {
+  final userIds = ref.watch(chatUserIdsProvider);
+  final repo = ref.read(profileRepositoryProvider);
+  final profiles = <ProfileModel>[];
+  
+  for (final id in userIds) {
+    if (id == 'system_admin') continue;
+    try {
+      final p = await repo.getProfile(id);
+      if (p != null) profiles.add(p);
+    } catch (_) {}
+  }
+  return profiles;
+});
+
+/// Provider tổng hợp danh sách người dùng có thể thêm vào nhóm (Following + Inbox)
+final selectableFriendsProvider = FutureProvider<List<ProfileModel>>((ref) async {
+  final currentUid = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
+  if (currentUid.isEmpty) return [];
+
+  // 1. Lấy danh sách Following
+  final following = await ref.read(followingFutureProvider(currentUid).future);
+  
+  // 2. Lấy danh sách từ Inbox
+  final inbox = await ref.read(inboxProfilesProvider.future);
+
+  // 3. Hợp nhất và loại bỏ trùng lặp dựa trên userId
+  final Map<String, ProfileModel> merged = {};
+  for (final p in following) {
+    merged[p.userId] = p;
+  }
+  for (final p in inbox) {
+    merged[p.userId] = p;
+  }
+
+  return merged.values.toList();
 });
 
 class AsyncStreamController<T> {

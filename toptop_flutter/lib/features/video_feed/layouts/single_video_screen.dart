@@ -16,11 +16,13 @@ import '../widgets/video_player_widget.dart';
 class SingleVideoScreen extends ConsumerStatefulWidget {
   final String videoId;
   final bool showComments;
+  final bool isEmbedded; // Nếu true, không hiển thị Scaffold và nút back riêng
 
   const SingleVideoScreen({
     super.key,
     required this.videoId,
     this.showComments = false,
+    this.isEmbedded = false,
   });
 
   @override
@@ -107,31 +109,14 @@ class _SingleVideoScreenState extends ConsumerState<SingleVideoScreen> {
           }
 
           if (video.moderationStatus == 'rejected') {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.block, size: 64, color: Colors.redAccent),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Video này đã bị khóa do vi phạm tiêu chuẩn cộng đồng.',
-                    style: TextStyle(color: Colors.white70, fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton(
-                    onPressed: () => context.pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                    ),
-                    child: const Text('Quay lại', style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
+            return _buildErrorState(
+              icon: Icons.block,
+              message: 'Video này đã bị khóa do vi phạm tiêu chuẩn cộng đồng.',
+              context: context,
             );
           }
 
-          return Stack(
+          final content = Stack(
             fit: StackFit.expand,
             children: [
               // 1. Trình phát Video
@@ -143,29 +128,55 @@ class _SingleVideoScreenState extends ConsumerState<SingleVideoScreen> {
               // 3. Sidebar tương tác
               VideoActionBar(video: video),
 
-              // 4. Nút Back (Quay lại) nổi lên trên
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
-                left: 12,
-                child: GestureDetector(
-                  onTap: () => context.pop(),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.black45,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 24,
+              // 4. Nút Back (Quay lại)
+              if (!widget.isEmbedded)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + 12,
+                  left: 12,
+                  child: GestureDetector(
+                    onTap: () => context.pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black45,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           );
+
+          return widget.isEmbedded ? content : Scaffold(
+            backgroundColor: Colors.black,
+            body: content,
+          );
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorState({required IconData icon, required String message, required BuildContext context}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(message, style: const TextStyle(color: Colors.white70, fontSize: 16), textAlign: TextAlign.center),
+          const SizedBox(height: 24),
+          if (!widget.isEmbedded)
+            ElevatedButton(
+              onPressed: () => context.pop(),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+              child: const Text('Quay lại', style: TextStyle(color: Colors.white)),
+            ),
+        ],
       ),
     );
   }

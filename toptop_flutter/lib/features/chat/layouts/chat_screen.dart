@@ -3,9 +3,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/providers/firebase_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../profile/providers/profile_provider.dart';
+import '../../video_upload/providers/upload_provider.dart';
 import '../providers/chat_provider.dart';
 import '../repositories/chat_repository.dart';
 import '../widgets/chat_bubble.dart';
@@ -84,9 +86,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } catch (_) {}
   }
 
-  void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty || _myUid == null) return;
+  void _sendMessage({String type = 'text', String? messageText}) {
+    final text = messageText ?? _messageController.text.trim();
+    if (text.isEmpty && type == 'text') return;
+    if (_myUid == null) return;
 
     // Dừng typing khi gửi
     _typingTimer?.cancel();
@@ -96,9 +99,49 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       senderId: _myUid!,
       receiverId: widget.receiverId,
       message: text,
+      type: type,
     );
 
-    _messageController.clear();
+    if (type == 'text') _messageController.clear();
+  }
+
+  Future<void> _sendImage() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (picked == null) return;
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải ảnh lên Cloudinary...'), duration: Duration(seconds: 30)),
+      );
+    }
+
+    try {
+      final uploadRepo = ref.read(uploadRepositoryProvider);
+      final url = await uploadRepo.uploadImageToCloudinary(file: picked);
+
+      _sendMessage(type: 'image', messageText: url);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gửi ảnh thành công!')),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error sending image to Cloudinary in ChatScreen: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi gửi ảnh: $e')),
+        );
+      }
+    }
   }
 
   /// Đánh dấu đã xem sau khi load tin nhắn
@@ -375,6 +418,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 child: Row(
                   children: [
+                    // Nút gửi ảnh
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt_outlined, color: AppTheme.textHint),
+                      onPressed: _sendImage,
+                    ),
                     // Input field
                     Expanded(
                       child: Container(

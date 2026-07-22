@@ -133,7 +133,20 @@ class ChatBubble extends StatelessWidget {
     if (message.type == 'video_share') {
       final videoId = message.metadata?['videoId'] as String? ?? '';
       if (videoId.isNotEmpty) {
-        return VideoShareCard(videoId: videoId);
+        // Xác định roomId để khi bấm vào có thể vuốt dọc được
+        String? roomId;
+        if (currentUid != null) {
+          // Logic Heuristic: Nếu receiverId là UID (1-1), tính RoomId composite.
+          // Nếu là Group (thường ngắn hơn hoặc prefix group_), dùng trực tiếp.
+          if (message.receiverId.length >= 20 && !message.receiverId.startsWith('group')) {
+             roomId = (currentUid!.compareTo(message.receiverId) < 0)
+                 ? '${currentUid}_${message.receiverId}' 
+                 : '${message.receiverId}_$currentUid';
+          } else {
+             roomId = message.receiverId; 
+          }
+        }
+        return VideoShareCard(videoId: videoId, roomId: roomId);
       }
     }
 
@@ -209,7 +222,48 @@ class ChatBubble extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 14));
     }
 
-    // ── 4. Tin nhắn văn bản thông thường ───────────────────────────────
+    // ── 4. Sticker message ──────────────────────────────────────────────
+    if (message.type == 'sticker') {
+      return CachedNetworkImage(
+        imageUrl: text,
+        height: 100,
+        width: 100,
+        fit: BoxFit.contain,
+      );
+    }
+
+    // ── 5. Image message ────────────────────────────────────────────────
+    if (message.type == 'image') {
+      return GestureDetector(
+        onTap: () {
+          // Full screen preview logic could go here
+        },
+        child: Container(
+          constraints: const BoxConstraints(
+            minWidth: 100,
+            minHeight: 100,
+            maxWidth: 240,
+            maxHeight: 320,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: text,
+              placeholder: (context, url) => Container(
+                width: 150,
+                height: 150,
+                color: isDark ? Colors.grey[900] : Colors.grey[200],
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── 6. Tin nhắn văn bản thông thường ───────────────────────────────
     return Text(
       text,
       style: TextStyle(

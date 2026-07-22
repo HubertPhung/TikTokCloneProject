@@ -17,6 +17,6 @@ Future<TaskSnapshot> uploadToFirebaseStorage({
   required Reference reference,
   required XFile file,
   SettableMetadata? metadata,
-}) {
-  return reference.putFile(File(file.path), metadata);
+}) async {
+  return reference.putData(await file.readAsBytes(), metadata);
 }

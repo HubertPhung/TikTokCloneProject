@@ -10,7 +10,11 @@ import 'package:toptop_flutter/features/auth/layouts/signup_screen.dart';
 import 'package:toptop_flutter/features/auth/layouts/splash_screen.dart';
 import 'package:toptop_flutter/features/chat/layouts/inbox_screen.dart';
 import 'package:toptop_flutter/features/chat/layouts/chat_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/group_chat_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/group_settings_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/group_management_screen.dart';
 import 'package:toptop_flutter/features/chat/layouts/notifications_screen.dart';
+import 'package:toptop_flutter/features/chat/layouts/shared_video_player_screen.dart';
 import 'package:toptop_flutter/features/profile/layouts/profile_screen.dart';
 import 'package:toptop_flutter/features/profile/layouts/edit_profile_screen.dart';
 import 'package:toptop_flutter/features/profile/layouts/edit_field_screen.dart';
@@ -79,7 +83,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           currentPath == '/home' ||
           currentPath == '/search' ||
           currentPath.startsWith('/video/') ||
-          currentPath.startsWith('/user/');
+          currentPath.startsWith('/user/') ||
+          currentPath.startsWith('/groupchat/');
 
       if (!isLoggedIn && !isAllowedGuestRoute) {
         return '/auth';
@@ -282,6 +287,46 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
 
+      // Màn hình chat nhóm
+      GoRoute(
+        path: '/groupchat/:groupId',
+        pageBuilder: (context, state) {
+          final groupId = state.pathParameters['groupId'] ?? '';
+          final name = state.uri.queryParameters['name'] ?? 'Nhóm';
+          return buildSlidePage(
+            key: state.pageKey,
+            child: GroupChatScreen(
+              groupId: groupId,
+              groupName: name,
+            ),
+          );
+        },
+      ),
+
+      // Màn hình cài đặt nhóm
+      GoRoute(
+        path: '/group-settings/:groupId',
+        pageBuilder: (context, state) {
+          final groupId = state.pathParameters['groupId'] ?? '';
+          return buildSlidePage(
+            key: state.pageKey,
+            child: GroupSettingsScreen(groupId: groupId),
+          );
+        },
+      ),
+
+      // Màn hình quản lý nhóm (admin)
+      GoRoute(
+        path: '/group-management/:groupId',
+        pageBuilder: (context, state) {
+          final groupId = state.pathParameters['groupId'] ?? '';
+          return buildSlidePage(
+            key: state.pageKey,
+            child: GroupManagementScreen(groupId: groupId),
+          );
+        },
+      ),
+
       // Màn hình tất cả thông báo hoạt động
       GoRoute(
         path: '/notifications',
@@ -289,6 +334,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           key: state.pageKey,
           child: const NotificationsScreen(),
         ),
+      ),
+
+      // Màn hình xem video từ share
+      GoRoute(
+        path: '/shared-videos/:roomId',
+        builder: (context, state) {
+          final roomId = state.pathParameters['roomId'] ?? '';
+          final videoId = state.uri.queryParameters['videoId'] ?? '';
+          return SharedVideoPlayerScreen(
+            roomId: roomId,
+            initialVideoId: videoId,
+          );
+        },
       ),
 
       // Các màn hình Cài đặt & Quyền riêng tư
