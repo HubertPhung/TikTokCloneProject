@@ -7,12 +7,21 @@ import '../models/video_model.dart';
 import '../models/ad_model.dart';
 import '../models/feed_item.dart';
 import '../repositories/video_repository.dart';
+import '../services/recsys_service.dart';
+
+/// Provider cho RecSysService kết nối tới Google Colab
+final recsysServiceProvider = Provider<RecSysService>((ref) {
+  return RecSysService(
+    database: ref.watch(realtimeDbProvider),
+  );
+});
 
 /// Provider cho VideoRepository
 final videoRepositoryProvider = Provider<VideoRepository>((ref) {
   return VideoRepository(
     firestore: ref.watch(firestoreProvider),
     database: ref.watch(realtimeDbProvider),
+    recsysService: ref.watch(recsysServiceProvider),
   );
 });
 

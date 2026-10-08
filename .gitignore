@@ -36,6 +36,7 @@ TikTokManagement/.env
 
 # Custom redirect page repo
 toptop-share-page/
+agri-behavioral-recsys/
 
 # Flutter specific ignores
 toptop_flutter/.dart_tool/
@@ -49,3 +50,13 @@ toptop_flutter/android/key.properties
 toptop_flutter/ios/Flutter/Generated.xcconfig
 toptop_flutter/ios/Flutter/flutter_export_environment.sh
 
+# Firebase Private Keys and Database Exports
+serviceAccountKey.json
+*adminsdk*.json
+*firebase-adminsdk*.json
+data/firebase_export/
+data/firebase/
+*-default-rtdb-export.json
+firestore_data.json
+realtime_db_data.json
+auth_users_data.json

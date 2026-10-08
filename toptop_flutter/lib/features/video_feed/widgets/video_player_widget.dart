@@ -137,6 +137,14 @@ class _VideoPlayerWidgetState extends ConsumerState<VideoPlayerWidget>
         // Đánh dấu đã xem sau 3 giây để tránh ẩn video quá sớm nếu chỉ lướt qua
         repo.markVideoAsWatched(user.uid, widget.video.videoId);
 
+        // Ghi nhận hành vi xem >= 3s lên Colab RecSys Server
+        repo.logRecSysInteraction(
+          userId: user.uid,
+          videoId: widget.video.videoId,
+          playTimeMs: elapsed * 1000,
+          isLike: false,
+        );
+
         repo.recordInterest(
           tags: widget.video.hashtags,
           currentUid: user.uid,

@@ -7,21 +7,37 @@ import 'package:firebase_database/firebase_database.dart';
 import '../../../core/constants/app_constants.dart';
 import '../models/video_model.dart';
 import '../models/ad_model.dart';
+import '../services/recsys_service.dart';
 
 /// Repository xử lý logic liên quan đến Video (feed, like, view count, sở thích)
 /// Port từ VideoFragment.java, VideoAdapter.java, RecommendationHelper.java
 class VideoRepository {
   final FirebaseFirestore _firestore;
   final FirebaseDatabase _database;
+  final RecSysService? _recsysService;
 
   VideoRepository({
     required FirebaseFirestore firestore,
     required FirebaseDatabase database,
+    RecSysService? recsysService,
   })  : _firestore = firestore,
-        _database = database;
+        _database = database,
+        _recsysService = recsysService;
 
   /// Lấy danh sách video được đề xuất (phân tích dựa trên tương tác, watch time và lịch sử tìm kiếm)
   Future<List<VideoModel>> getRecommendedVideos(String? currentUid) async {
+    // 0. ƯU TIÊN 1: Lấy danh sách video từ Colab AI RecSys Server (nếu đang hoạt động)
+    if (_recsysService != null) {
+      final aiVideos = await _recsysService.getRecommendations(
+        userId: currentUid,
+        limit: AppConstants.videoFeedLimit,
+      );
+      if (aiVideos != null && aiVideos.isNotEmpty) {
+        return aiVideos;
+      }
+    }
+
+    // 1. DỰ PHÒNG: Thuật toán Firestore truyền thống khi RecSys chưa bật hoặc lỗi mạng
     final snapshot = await _firestore
         .collection(AppConstants.videosCollection)
         .orderBy('timestamp', descending: true)
@@ -597,5 +613,20 @@ class VideoRepository {
       'userId': userId,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
+  }
+
+  /// Ghi nhận hành vi tương tác video ngắn (xem >= 3s hoặc like tim) lên máy chủ Colab RecSys
+  void logRecSysInteraction({
+    required String? userId,
+    required String videoId,
+    required int playTimeMs,
+    required bool isLike,
+  }) {
+    _recsysService?.logInteraction(
+      userId: userId,
+      videoId: videoId,
+      playTimeMs: playTimeMs,
+      isLike: isLike,
+    );
   }
 }

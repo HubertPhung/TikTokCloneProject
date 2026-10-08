@@ -44,4 +44,11 @@ class AppConstants {
 
   // Splash
   static const int splashDurationMs = 2000;
+
+  // Google Colab RecSys API (Cloudflare Tunnel URL)
+  static const String recSysApiUrl = String.fromEnvironment(
+    'RECSYS_API_URL',
+    defaultValue: '',
+  );
+  static const String recSysStorageKey = 'recsys_colab_api_url';
 }

@@ -191,6 +191,14 @@ class VideoActionBar extends ConsumerWidget {
                         isLiked: !isLiked,
                         currentUsername: username,
                       );
+
+                  // Ghi nhận tương tác like lên Colab RecSys Server
+                  ref.read(videoRepositoryProvider).logRecSysInteraction(
+                        userId: currentUser.uid,
+                        videoId: video.videoId,
+                        playTimeMs: 0,
+                        isLike: !isLiked,
+                      );
                 },
               );
             },
